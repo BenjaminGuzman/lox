@@ -17,10 +17,14 @@ enum TokenType {
     SEMICOLON,
     SLASH,
     STAR,
-    EQUAL,
-    EQUAL_EQUAL,
-    BANG,
-    BANG_EQUAL,
+    EQ, // EQUAL
+    EQ_EQ, // EQUAL EQUAL
+    NOT, // NEGATION (!)
+    NEQ, // NOT EQUAL
+    LT, // LESS THAN
+    LTE, // LESS THAN OR EQUAL
+    GT, // GREATER THAN
+    GTE, // GREATER THAN OR EQUAL
     EOF_TOKEN,
 
     /**

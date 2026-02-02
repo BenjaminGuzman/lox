@@ -20,6 +20,18 @@ std::string Scanner::read_file(const std::string& filepath) {
     return buffer.str();
 }
 
+/**
+ * Generators for tokens that are composite. These should be composed of an = (e.g., <=, >=, !=, ==)
+ * Maps a token (a) to the function (f) that would generate the composite token (b) which is equal to a + =,
+ * e.g., f(LT) = LTE,
+ */
+std::unordered_map<TokenType, std::function<Token(size_t, size_t)>> EQUAL_COMPOSITE_TOKENS_MAKERS = {
+    {EQ, [](size_t line, size_t col){ return Token{EQ_EQ, "==", "", line, col}; }},
+    {LT, [](size_t line, size_t col){ return Token{LTE, "<=", "", line, col}; }},
+    {GT, [](size_t line, size_t col){ return Token{GTE, ">=", "", line, col}; }},
+    {NOT, [](size_t line, size_t col){ return Token{NEQ, "!=", "", line, col}; }}
+};
+
 std::vector<Token> Scanner::tokenize(const std::string& filepath) {
     std::string contents = read_file(filepath);
     std::vector<Token> tokens;
@@ -63,30 +75,50 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
         case '*':
             tokens.emplace_back(STAR, "*", "", line, col);
             break;
-        case '=':
-            if (!tokens.empty()) {
-                // check if the previous token was an =, if so, this will make an "==" token
-                if (tokens.back().type == EQUAL) {
-                    tokens.pop_back();
-                    tokens.emplace_back(EQUAL_EQUAL, "==", "", line, col);
-                    break;
-                }
-
-                // check if the previous token was an !, if so, this will make an "!=" token
-                if (tokens.back().type == BANG) {
-                    tokens.pop_back();
-                    tokens.emplace_back(BANG_EQUAL, "!=", "", line, col);
-                    break;
-                }
-            }
-            tokens.emplace_back(EQUAL, "=", "", line, col);
+        case '<':
+            tokens.emplace_back(LT, "<", "", line, col);
+            break;
+        case '>':
+            tokens.emplace_back(GT, ">", "", line, col);
             break;
         case '!':
-            tokens.emplace_back(BANG, "!", "", line, col);
+            tokens.emplace_back(NOT, "!", "", line, col);
             break;
         case '\n':
             ++line;
             col = 1;
+            break;
+        case '=':
+            if (!tokens.empty()) {
+                auto previous_token = tokens.back().type;
+
+                bool stop_processing_curr_token = false;
+
+                // check if the previous token was token (a) that in composition with the current token (=) would form
+                // a composite token (b)
+                switch (previous_token) {
+                case EQ: // would form >=
+                case NOT: // would form !=
+                case LT: // would form <=
+                case GT: {
+                    // would form >=
+                    tokens.pop_back(); // remove the previous token as it shall be replaced by the composite
+
+                    auto makeCompositeTokenFn = EQUAL_COMPOSITE_TOKENS_MAKERS.at(previous_token);
+                    auto composite_token = makeCompositeTokenFn(line, col);
+
+                    tokens.push_back(composite_token);
+                    stop_processing_curr_token = true; // current token has already been processed
+                    break;
+                }
+                default: break;
+                }
+
+                if (stop_processing_curr_token)
+                    break;
+            }
+
+            tokens.emplace_back(EQ, "=", "", line, col);
             break;
         // case ' ':
         // case '\t':
@@ -116,10 +148,14 @@ std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {SEMICOLON, "SEMICOLON"},
     {SLASH, "SLASH"},
     {STAR, "STAR"},
-    {EQUAL, "EQUAL"},
-    {EQUAL_EQUAL, "EQUAL_EQUAL"},
-    {BANG, "BANG"},
-    {BANG_EQUAL, "BANG_EQUAL"},
+    {EQ, "EQUAL"},
+    {EQ_EQ, "EQUAL_EQUAL"},
+    {NOT, "BANG"},
+    {NEQ, "BANG_EQUAL"},
+    {LT, "LESS"},
+    {LTE, "LESS_EQUAL"},
+    {GT, "GREATER"},
+    {GTE, "GREATER_EQUAL"},
 };
 std::string to_string(const TokenType& type) {
     if (tokenTypeStrings.contains(type))
