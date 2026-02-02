@@ -25,9 +25,11 @@ int main(int argc, char *argv[]) {
     if (command == "tokenize") {
         std::string filepath = argv[2];
         auto abs_filepath = std::filesystem::canonical(filepath);
+
         std::vector<Token> tokens = Scanner::tokenize(abs_filepath);
-        std::string tokens_str = Serializer::serialize(abs_filepath, tokens);
-        std::cout << tokens_str;
+        int n_unrecognized = Serializer::serialize(abs_filepath, tokens);
+        if (n_unrecognized > 0)
+            return 65;
     } else {
         std::cerr << "Unknown command: " << command << std::endl;
         return 1;

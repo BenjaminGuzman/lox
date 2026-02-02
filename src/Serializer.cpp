@@ -1,12 +1,19 @@
 #include "Serializer.h"
 
+#include <iostream>
 #include <sstream>
 
-std::string Serializer::serialize(const std::string& filepath, const std::vector<Token>& tokens) {
-    std::stringstream buff;
+int Serializer::serialize(const std::string& filepath, const std::vector<Token>& tokens) {
+    int n_unrecognized = 0;
     for (auto const& token : tokens) {
-        buff << token.string(filepath);
-        buff << std::endl;
+        if (token.type == UNRECOGNIZED) {
+            std::cerr << token.string(filepath) << std::endl;
+            ++n_unrecognized;
+            continue;
+        }
+
+        std::cout << token.string(filepath) << std::endl;
     }
-    return buff.str();
+
+    return n_unrecognized;
 }

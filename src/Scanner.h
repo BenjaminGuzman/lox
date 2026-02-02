@@ -17,7 +17,12 @@ enum TokenType {
     SEMICOLON,
     SLASH,
     STAR,
-    EOF_TOKEN
+    EOF_TOKEN,
+
+    /**
+     * Especial value for al those tokens that are not recognized
+     */
+    UNRECOGNIZED
 };
 
 std::string to_string(const TokenType& type);
@@ -51,8 +56,14 @@ public:
         std::string literal_value = literal.empty() ? "null" : literal;
         std::string basic_serialized_token = to_string(type) + " " + lexeme + " " + literal_value;
 
-        if (PRETTY_PRINT)
+        if (PRETTY_PRINT) {
+            if (type == UNRECOGNIZED)
+                return "[" + filepath + ":" + std::to_string(line) + std::to_string(col) + "]: Error! Unexpected character: " + lexeme;
             return basic_serialized_token +  " " + filepath + ":" + std::to_string(line) + ":" + std::to_string(col);
+        }
+
+        if (type == UNRECOGNIZED)
+            return "[line " + std::to_string(line) + "] Error: Unexpected character: " + lexeme;
 
         return basic_serialized_token;
     }

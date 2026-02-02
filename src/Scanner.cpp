@@ -67,11 +67,12 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             ++line;
             col = 1;
             break;
-        case ' ':
-        case '\t':
-            break;
+        // case ' ':
+        // case '\t':
+            // break;
         default:
-            std::cerr << "Unrecognized token " << c << " at " << line << ":" << col << std::endl;
+            tokens.emplace_back(UNRECOGNIZED, std::string(1, c), "", line, col);
+            break;
          }
     }
 
