@@ -18,7 +18,7 @@ enum TokenType {
     SLASH,
     STAR,
     EQ, // EQUAL
-    EQ_EQ, // EQUAL EQUAL
+    EQEQ, // EQUAL EQUAL
     NOT, // NEGATION (!)
     NEQ, // NOT EQUAL
     LT, // LESS THAN
