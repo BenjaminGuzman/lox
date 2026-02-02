@@ -63,7 +63,7 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             break;
         case '/':
             if (i + 1 < contents.length() && contents[i + 1] == '/') { // process the // (comment)
-                while (i < contents.length() && contents[i] != '\n')
+                while (i < contents.length() && contents[i] != '\n') // ignore everything until the next line
                     ++i;
             } else
                 tokens.emplace_back(SLASH, "/", "", line, col);
@@ -103,9 +103,9 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             } else
                 tokens.emplace_back(EQ, "=", "", line, col);
             break;
-        // case ' ':
-        // case '\t':
-            // break;
+        case ' ':
+        case '\t':
+            break;
         default:
             tokens.emplace_back(UNRECOGNIZED, std::string(1, c), "", line, col);
             break;
