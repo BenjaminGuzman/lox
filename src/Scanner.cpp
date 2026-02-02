@@ -5,6 +5,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <cstring>
+#include <functional>
 
 
 std::string Scanner::read_file(const std::string& filepath) {
@@ -29,27 +30,48 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
         char c = contents[i];
         ++col;
         switch (c) {
-            case '(':
-                tokens.emplace_back(LEFT_PAREN, "(", "", line, col);
-                break;
-            case ')':
-                tokens.emplace_back(RIGHT_PAREN, ")", "", line, col);
-                break;
-            case '{':
-                tokens.emplace_back(LEFT_BRACE, "{", "", line, col);
-                break;
-            case '}':
-                tokens.emplace_back(RIGHT_BRACE, "}", "", line, col);
-                break;
-            case '\n':
-                ++line;
-                col = 1;
-                break;
-            case ' ':
-            case '\t':
-                break;
-            default:
-                std::cerr << "Unrecognized token " << c << " at " << line << ":" << col << std::endl;
+        case '(':
+            tokens.emplace_back(LEFT_PAREN, "(", "", line, col);
+            break;
+        case ')':
+            tokens.emplace_back(RIGHT_PAREN, ")", "", line, col);
+            break;
+        case '{':
+            tokens.emplace_back(LEFT_BRACE, "{", "", line, col);
+            break;
+        case '}':
+            tokens.emplace_back(RIGHT_BRACE, "}", "", line, col);
+            break;
+        case ',':
+            tokens.emplace_back(COMMA, ",", "", line, col);
+            break;
+        case '.':
+            tokens.emplace_back(DOT, ".", "", line, col);
+            break;
+        case '-':
+            tokens.emplace_back(MINUS, "-", "", line, col);
+            break;
+        case '+':
+            tokens.emplace_back(PLUS, "+", "", line, col);
+            break;
+        case ';':
+            tokens.emplace_back(SEMICOLON, ";", "", line, col);
+            break;
+        case '/':
+            tokens.emplace_back(SLASH, "/", "", line, col);
+            break;
+        case '*':
+            tokens.emplace_back(STAR, "*", "", line, col);
+            break;
+        case '\n':
+            ++line;
+            col = 1;
+            break;
+        case ' ':
+        case '\t':
+            break;
+        default:
+            std::cerr << "Unrecognized token " << c << " at " << line << ":" << col << std::endl;
          }
     }
 
@@ -64,7 +86,14 @@ std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {RIGHT_PAREN, "RIGHT_PAREN"},
     {EOF_TOKEN, "EOF"},
     {LEFT_BRACE, "LEFT_BRACE"},
-    {RIGHT_BRACE, "RIGHT_BRACE"}
+    {RIGHT_BRACE, "RIGHT_BRACE"},
+    {COMMA, "COMMA"},
+    {DOT, "DOT"},
+    {MINUS, "MINUS"},
+    {PLUS, "PLUS"},
+    {SEMICOLON, "SEMICOLON"},
+    {SLASH, "SLASH"},
+    {STAR, "STAR"}
 };
 std::string to_string(const TokenType& type) {
     if (tokenTypeStrings.contains(type))

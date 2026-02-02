@@ -10,6 +10,13 @@ enum TokenType {
     RIGHT_PAREN,
     LEFT_BRACE,
     RIGHT_BRACE,
+    COMMA,
+    DOT,
+    MINUS,
+    PLUS,
+    SEMICOLON,
+    SLASH,
+    STAR,
     EOF_TOKEN
 };
 
@@ -33,12 +40,12 @@ public:
     /**
      * Line in the file at which the token was found
      */
-    const int line;
+    const size_t line;
 
     /**
      * Column in the file at which the token was found
      */
-    const int col;
+    const size_t col;
 
     std::string string(const std::string& filepath) const {
         std::string literal_value = literal.empty() ? "null" : literal;
