@@ -65,6 +65,8 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             if (i + 1 < contents.length() && contents[i + 1] == '/') { // process the // (comment)
                 while (i < contents.length() && contents[i] != '\n') // ignore everything until the next line
                     ++i;
+                // i is now at EOF, or past the next line, which we didn't process, so we need to process it
+                --i;
             } else
                 tokens.emplace_back(SLASH, "/", "", line, col);
             break;
