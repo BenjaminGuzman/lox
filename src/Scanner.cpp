@@ -64,13 +64,25 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             tokens.emplace_back(STAR, "*", "", line, col);
             break;
         case '=':
-            // check if the previous token was an =, if so, this will make an equal equal token
-            if (!tokens.empty() && tokens.back().type == EQUAL) {
-                tokens.pop_back();
-                tokens.emplace_back(EQUAL_EQUAL, "==", "", line, col);
-                break;
+            if (!tokens.empty()) {
+                // check if the previous token was an =, if so, this will make an "==" token
+                if (tokens.back().type == EQUAL) {
+                    tokens.pop_back();
+                    tokens.emplace_back(EQUAL_EQUAL, "==", "", line, col);
+                    break;
+                }
+
+                // check if the previous token was an !, if so, this will make an "!=" token
+                if (tokens.back().type == BANG) {
+                    tokens.pop_back();
+                    tokens.emplace_back(BANG_EQUAL, "!=", "", line, col);
+                    break;
+                }
             }
             tokens.emplace_back(EQUAL, "=", "", line, col);
+            break;
+        case '!':
+            tokens.emplace_back(BANG, "!", "", line, col);
             break;
         case '\n':
             ++line;
@@ -106,6 +118,8 @@ std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {STAR, "STAR"},
     {EQUAL, "EQUAL"},
     {EQUAL_EQUAL, "EQUAL_EQUAL"},
+    {BANG, "BANG"},
+    {BANG_EQUAL, "BANG_EQUAL"},
 };
 std::string to_string(const TokenType& type) {
     if (tokenTypeStrings.contains(type))
