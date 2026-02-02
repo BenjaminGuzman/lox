@@ -63,6 +63,15 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
         case '*':
             tokens.emplace_back(STAR, "*", "", line, col);
             break;
+        case '=':
+            // check if the previous token was an =, if so, this will make an equal equal token
+            if (!tokens.empty() && tokens.back().type == EQUAL) {
+                tokens.pop_back();
+                tokens.emplace_back(EQUAL_EQUAL, "==", "", line, col);
+                break;
+            }
+            tokens.emplace_back(EQUAL, "=", "", line, col);
+            break;
         case '\n':
             ++line;
             col = 1;
@@ -94,7 +103,9 @@ std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {PLUS, "PLUS"},
     {SEMICOLON, "SEMICOLON"},
     {SLASH, "SLASH"},
-    {STAR, "STAR"}
+    {STAR, "STAR"},
+    {EQUAL, "EQUAL"},
+    {EQUAL_EQUAL, "EQUAL_EQUAL"},
 };
 std::string to_string(const TokenType& type) {
     if (tokenTypeStrings.contains(type))

@@ -17,6 +17,8 @@ enum TokenType {
     SEMICOLON,
     SLASH,
     STAR,
+    EQUAL,
+    EQUAL_EQUAL,
     EOF_TOKEN,
 
     /**
