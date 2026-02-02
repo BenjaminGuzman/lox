@@ -3,8 +3,10 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <filesystem>
 
-std::string read_file_contents(const std::string& filename);
+#include "Scanner.h"
+#include "Serializer.h"
 
 int main(int argc, char *argv[]) {
     // Disable output buffering
@@ -20,34 +22,16 @@ int main(int argc, char *argv[]) {
     }
 
     const std::string command = argv[1];
-
     if (command == "tokenize") {
-        std::string file_contents = read_file_contents(argv[2]);
-        
-        if (!file_contents.empty()) {
-            std::cerr << "Scanner not implemented" << std::endl;
-            return 1;
-        }
-        std::cout << "EOF  null" << std::endl; // Placeholder, replace this line when implementing the scanner
-        
+        std::string filepath = argv[2];
+        auto abs_filepath = std::filesystem::canonical(filepath);
+        std::vector<Token> tokens = Scanner::tokenize(abs_filepath);
+        std::string tokens_str = Serializer::serialize(abs_filepath, tokens);
+        std::cout << tokens_str;
     } else {
         std::cerr << "Unknown command: " << command << std::endl;
         return 1;
     }
 
     return 0;
-}
-
-std::string read_file_contents(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Error reading file: " << filename << std::endl;
-        std::exit(1);
-    }
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    file.close();
-
-    return buffer.str();
 }
