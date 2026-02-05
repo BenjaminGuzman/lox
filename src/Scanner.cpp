@@ -24,6 +24,32 @@ std::string Scanner::read_file(const std::string& filepath) {
     return buffer.str();
 }
 
+/**
+ * Identifies the string token in the given string
+ * @param str the string.
+ * @param str_start_at index that should point to the first character that is said to be part of the string
+ * (i.e., this index shouldn't point to '"' unless the string is empty)
+ * @param line line at which the string starts (used just to store in the returned token)
+ * @param col col at which the string starts (used just to store in the returned token)
+ * @return the token which can be of type @link TokenType::STRING @endlink
+ * or @link TokenType::UNTERMINATED_STRING @endlink. The returned token won't have the line/col populated
+ */
+Token identifyString(const std::string& str, const size_t str_start_at, const size_t line, const size_t col) {
+    for (size_t i = str_start_at; i < str.length(); ++i) {
+        char c = str.at(i);
+        // TODO add escape sequences??
+        if (c == '"') {
+            size_t str_len = i - str_start_at;
+            const std::string s = str.substr(str_start_at, str_len);
+            return Token{STRING, '"' + s + '"', s, line, col};
+        } else if (c == '\n') { // no multi-line strings supported now
+            size_t str_len = i - str_start_at;
+            return Token{UNTERMINATED_STRING, "UNTERMINATED STRING", str.substr(str_start_at, str_len), line, col};
+        }
+    }
+    return Token{UNTERMINATED_STRING, "UNTERMINATED STRING", str.substr(str_start_at), line, col};
+}
+
 std::vector<Token> Scanner::tokenize(const std::string& filepath) {
     std::string contents = read_file(filepath);
     std::vector<Token> tokens;
@@ -65,7 +91,7 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             if (i + 1 < contents.length() && contents[i + 1] == '/') { // process the // (comment)
                 while (i < contents.length() && contents[i] != '\n') // ignore everything until the next line
                     ++i;
-                // i is now at EOF, or past the next line, which we didn't process, so we need to process it
+                // i is now at EOF, or past the next \n, which we didn't process, so we need to process it (go the case)
                 --i;
             } else
                 tokens.emplace_back(SLASH, "/", "", line, col);
@@ -108,7 +134,19 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
         case ' ':
         case '\t':
             break;
-        default:
+        case '"': {
+            Token stringToken = identifyString(contents, i + 1, line, col);
+
+            // advance the pointers to the next char that is not part of the string
+            col += stringToken.literal.length() + 1; // + 1 due to the last '"' (or '\n'/EOF if unterminated)
+            i += stringToken.literal.length() + 1;
+            if (stringToken.type == UNTERMINATED_STRING)
+                // currently i is at either the '\n' (or EOF), so we need to go back, to process the '\n'
+                --i;
+
+            tokens.push_back(stringToken);
+            break;
+        } default:
             tokens.emplace_back(UNRECOGNIZED, std::string(1, c), "", line, col);
             break;
          }
@@ -141,6 +179,7 @@ std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {LTE, "LESS_EQUAL"},
     {GT, "GREATER"},
     {GTE, "GREATER_EQUAL"},
+    {STRING, "STRING"}
 };
 std::string to_string(const TokenType& type) {
     if (tokenTypeStrings.contains(type))

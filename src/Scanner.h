@@ -26,11 +26,14 @@ enum TokenType {
     GT, // GREATER THAN
     GTE, // GREATER THAN OR EQUAL
     EOF_TOKEN,
+    STRING,
 
     /**
      * Especial value for al those tokens that are not recognized
      */
-    UNRECOGNIZED
+    UNRECOGNIZED,
+
+    UNTERMINATED_STRING,
 };
 
 std::string to_string(const TokenType& type);
@@ -66,12 +69,19 @@ public:
 
         if (PRETTY_PRINT) {
             if (type == UNRECOGNIZED)
-                return "[" + filepath + ":" + std::to_string(line) + std::to_string(col) + "]: Error! Unexpected character: " + lexeme;
+                return "[" + filepath + ":" + std::to_string(line) + ":" + std::to_string(col) + "]: Error! Unexpected character: " + lexeme;
+
+            if (type == UNTERMINATED_STRING)
+                return "[" + filepath + ":" + std::to_string(line) + ":" + std::to_string(col) + "]: Error! Unterminated string: " + literal;
+
             return basic_serialized_token +  " " + filepath + ":" + std::to_string(line) + ":" + std::to_string(col);
         }
 
         if (type == UNRECOGNIZED)
             return "[line " + std::to_string(line) + "] Error: Unexpected character: " + lexeme;
+
+        if (type == UNTERMINATED_STRING)
+            return "[line " + std::to_string(line) + "] Error: Unterminated string.";
 
         return basic_serialized_token;
     }
