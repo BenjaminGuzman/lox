@@ -29,8 +29,8 @@ std::string Scanner::read_file(const std::string& filepath) {
  * @param str the string.
  * @param str_start_at index that should point to the first character that is said to be part of the string
  * (i.e., this index shouldn't point to '"' unless the string is empty)
- * @param line line at which the string starts (used just to store in the returned token)
- * @param col col at which the string starts (used just to store in the returned token)
+ * @param line line at which the string starts (used just to store it in the returned token)
+ * @param col col at which the string starts (used just to store it in the returned token)
  * @return the token which can be of type @link TokenType::STRING @endlink
  * or @link TokenType::UNTERMINATED_STRING @endlink. The returned token won't have the line/col populated
  */
@@ -48,6 +48,59 @@ Token identifyString(const std::string& str, const size_t str_start_at, const si
         }
     }
     return Token{UNTERMINATED_STRING, "UNTERMINATED STRING", str.substr(str_start_at), line, col};
+}
+
+/**
+ * Identifies the number token in the given string
+ * @param str the string.
+ * @param str_start_at index that should point to the first character that is said to be part of the number
+ * @param line line at which the string starts (used just to store it in the returned token)
+ * @param col col at which the string starts (used just to store it in the returned token)
+ * @return the token which can be of type @link TokenType::STRING @endlink
+ * or @link TokenType::UNTERMINATED_STRING @endlink. The returned token won't have the line/col populated
+ */
+Token identifyNumber(const std::string& str, const size_t str_start_at, const size_t line, const size_t col) {
+    int initial_offset = 0; // 1 if the number has a sign
+    char first_char = str.at(str_start_at);
+    if (first_char == '-' || first_char == '+')
+        initial_offset = 1;
+
+    // parse integer
+    unsigned long long integer = 0;
+    size_t i = str_start_at + initial_offset;
+    for (; i < str.length(); ++i) {
+        char c = str.at(i);
+        if (!std::isdigit(c) || c == '.')
+            break;
+        integer = integer * 10 + (c - '0');
+    }
+
+    // parse fractional (if any)
+    unsigned long long fractional = 0;
+    int fractional_digits = 0;
+    initial_offset = i < str.length() && str.at(i) == '.' ? 1 : 0; // start at char after the '.' (which should be a digit)
+    for (i = i + initial_offset; i < str.length(); ++i) {
+        char c = str.at(i);
+        if (!std::isdigit(c))
+            break;
+        fractional = fractional * 10 + (c - '0');
+        ++fractional_digits;
+    }
+
+    RealNumber number = {
+        .integer = integer,
+        .fractional = fractional,
+        .n_fractional_digits = fractional_digits
+    };
+
+    std::string lexeme = str.substr(str_start_at, i - str_start_at);
+    return Token{
+        .type = NUMBER,
+        .lexeme = lexeme,
+        .literal = number,
+        .line = line,
+        .col = col
+    };
 }
 
 std::vector<Token> Scanner::tokenize(const std::string& filepath) {
@@ -134,22 +187,44 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
         case ' ':
         case '\t':
             break;
-        case '"': {
+        case '"': { // parse strings
             Token stringToken = identifyString(contents, i + 1, line, col);
 
             // advance the pointers to the next char that is not part of the string
-            col += stringToken.literal.length() + 1; // + 1 due to the last '"' (or '\n'/EOF if unterminated)
-            i += stringToken.literal.length() + 1;
+            // i currently points to '"', and the lexeme contains "the string" (with quotes), thus i should point to
+            // i = i + |"the string"| - 1 (due to the first char)
+            col += stringToken.lexeme.length() - 1;
+            i += stringToken.lexeme.length() - 1;
             if (stringToken.type == UNTERMINATED_STRING)
                 // currently i is at either the '\n' (or EOF), so we need to go back, to process the '\n'
                 --i;
 
             tokens.push_back(stringToken);
             break;
+        }
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        case '0': { // parse number without sign
+            Token number = identifyNumber(contents, i, line, col);
+            tokens.push_back(number);
+            col += number.lexeme.length();
+            i += number.lexeme.length();
+
+            // now i is at the char past the last digit in the number. We need to process that char, thus
+            // we decrement i, so that in the next cycle we go to such character
+            --i;
+            break;
         } default:
             tokens.emplace_back(UNRECOGNIZED, std::string(1, c), "", line, col);
             break;
-         }
+        }
     }
 
     tokens.emplace_back(EOF_TOKEN, "", "", line, col);
@@ -179,11 +254,16 @@ std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {LTE, "LESS_EQUAL"},
     {GT, "GREATER"},
     {GTE, "GREATER_EQUAL"},
-    {STRING, "STRING"}
+    {STRING, "STRING"},
+    {NUMBER, "NUMBER"},
 };
 std::string to_string(const TokenType& type) {
     if (tokenTypeStrings.contains(type))
         return tokenTypeStrings[type];
 
     return "UNKNOWN";
+}
+
+std::string to_string(const RealNumber& number) {
+    return std::to_string(number.integer) + "." + std::to_string(number.fractional);
 }
