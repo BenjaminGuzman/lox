@@ -40,3 +40,5 @@ var uno = 10
 uno * dos
 
 "Unterminated string
+
+if while true false var fun print nil

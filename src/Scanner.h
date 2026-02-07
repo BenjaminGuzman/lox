@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -45,7 +46,25 @@ enum TokenType {
     STRING,
     NUMBER,
     IDENTIFIER,
-    KEYWORD,
+
+    // KEYWORDS
+    AND,
+    OR,
+    CLASS,
+    IF,
+    ELSE,
+    TRUE,
+    FALSE,
+    FOR,
+    WHILE,
+    FUN,
+    RETURN,
+    SUPER,
+    THIS,
+    VAR,
+    NIL,
+    PRINT,
+
 
     /**
      * Especial value for al those tokens that are not recognized
@@ -54,8 +73,44 @@ enum TokenType {
     UNTERMINATED_STRING,
     INVALID_NUMBER
 };
-
 std::string to_string(const TokenType& type);
+inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {
+    {"(", LEFT_PAREN},
+    {")", RIGHT_PAREN},
+    {"{", LEFT_BRACE},
+    {"}", RIGHT_BRACE},
+    {",", COMMA},
+    {".", DOT},
+    {"-", MINUS},
+    {"+", PLUS},
+    {";", SEMICOLON},
+    {"/", SLASH},
+    {"*", STAR},
+    {"=", EQ},
+    {"==", EQEQ},
+    {"!", NOT},
+    {"!=", NEQ},
+    {"<", LT},
+    {"<=", LTE},
+    {">", GT},
+    {">=", GTE},
+    {"and", AND},
+    {"or", OR},
+    {"class", CLASS},
+    {"if", IF},
+    {"else", ELSE},
+    {"true", TRUE},
+    {"false", FALSE},
+    {"for", FOR},
+    {"while", WHILE},
+    {"fun", FUN},
+    {"return", RETURN},
+    {"super", SUPER},
+    {"this", THIS},
+    {"var", VAR},
+    {"nil", NIL},
+    {"print", PRINT},
+};
 
 template<typename T>
 class BasicToken {

@@ -7,11 +7,6 @@
 #include <cstring>
 #include <functional>
 
-#define SKIP_NEXT_CHAR(i, col)\
-    ++i;\
-    ++col;
-
-
 std::string Scanner::read_file(const std::string& filepath) {
     std::ifstream file(filepath);
     if (!file.is_open())
@@ -113,32 +108,39 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
         char c = contents[i];
         ++col;
         switch (c) {
+        // non-composite or especial chars
         case '(':
-            tokens.emplace_back(LEFT_PAREN, "(", "", line, col);
-            break;
         case ')':
-            tokens.emplace_back(RIGHT_PAREN, ")", "", line, col);
-            break;
         case '{':
-            tokens.emplace_back(LEFT_BRACE, "{", "", line, col);
-            break;
         case '}':
-            tokens.emplace_back(RIGHT_BRACE, "}", "", line, col);
-            break;
         case ',':
-            tokens.emplace_back(COMMA, ",", "", line, col);
-            break;
         case '.':
-            tokens.emplace_back(DOT, ".", "", line, col);
-            break;
         case '-':
-            tokens.emplace_back(MINUS, "-", "", line, col);
-            break;
         case '+':
-            tokens.emplace_back(PLUS, "+", "", line, col);
-            break;
         case ';':
-            tokens.emplace_back(SEMICOLON, ";", "", line, col);
+        case '*': {
+            auto lexeme = std::string(1, c);
+            tokens.emplace_back(TOKEN_STRING_MAPPING.at(lexeme), lexeme, "", line, col);
+            break;
+        }
+        // composite chars (they all can be composed with =, making the token <=, ==, >=, !=)
+        case '=':
+        case '!':
+        case '>':
+        case '<': {
+            auto lexeme = std::string(1, c);
+            if (i + 1 < contents.length() && contents[i + 1] == '=') { // process the current char + '=' (<=, ==, ...)
+                lexeme += "=";
+                tokens.emplace_back(TOKEN_STRING_MAPPING.at(lexeme), lexeme, "", line, col);
+                ++i;
+                ++col;
+            } else
+                tokens.emplace_back(TOKEN_STRING_MAPPING.at(lexeme), lexeme, "", line, col);
+            break;
+        }
+        case '\n':
+            ++line;
+            col = 0;
             break;
         case '/':
             if (i + 1 < contents.length() && contents[i + 1] == '/') { // process the // (comment)
@@ -149,41 +151,7 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             } else
                 tokens.emplace_back(SLASH, "/", "", line, col);
             break;
-        case '*':
-            tokens.emplace_back(STAR, "*", "", line, col);
-            break;
-        case '<':
-            if (i + 1 < contents.length() && contents[i + 1] == '=') { // process the <=
-                tokens.emplace_back(LTE, "<=", "", line, col);
-                SKIP_NEXT_CHAR(i, col);
-            } else
-                tokens.emplace_back(LT, "<", "", line, col);
-            break;
-        case '>':
-            if (i + 1 < contents.length() && contents[i + 1] == '=') { // process the >=
-                tokens.emplace_back(GTE, ">=", "", line, col);
-                SKIP_NEXT_CHAR(i, col);
-            } else
-                tokens.emplace_back(GT, ">", "", line, col);
-            break;
-        case '!':
-            if (i + 1 < contents.length() && contents[i + 1] == '=') { // process the !=
-                tokens.emplace_back(NEQ, "!=", "", line, col);
-                SKIP_NEXT_CHAR(i, col);
-            } else
-                tokens.emplace_back(NOT, "!", "", line, col);
-            break;
-        case '\n':
-            ++line;
-            col = 0;
-            break;
-        case '=':
-            if (i + 1 < contents.length() && contents[i + 1] == '=') { // process the ==
-                tokens.emplace_back(EQEQ, "==", "", line, col);
-                SKIP_NEXT_CHAR(i, col);
-            } else
-                tokens.emplace_back(EQ, "=", "", line, col);
-            break;
+
         case ' ':
         case '\t':
             break;
@@ -226,7 +194,8 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             // we decrement i, so that in the next cycle we go to such character
             --i;
             break;
-        } default:
+        }
+        default:
             // scan identifiers and keywords
             std::stringstream buff;
             for (; i < contents.length(); ++i) {
@@ -239,7 +208,10 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
 
             if (!buff.view().empty()) { // it was actually an identifier or a keyword
                 std::string lexeme = buff.str(); // TODO check if the lexeme is a reserved keyword
-                tokens.emplace_back(IDENTIFIER, lexeme, "", line, col);
+                if (TOKEN_STRING_MAPPING.contains(lexeme))
+                    tokens.emplace_back(TOKEN_STRING_MAPPING.at(lexeme), lexeme, "", line, col);
+                else
+                    tokens.emplace_back(IDENTIFIER, lexeme, "", line, col);
 
                 // col currently points to the first char in the lexeme, so col = index_of_first_char + 1
                 // but col should point to the last char of the lexeme, so we need
@@ -291,7 +263,24 @@ std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {STRING, "STRING"},
     {NUMBER, "NUMBER"},
     {IDENTIFIER, "IDENTIFIER"},
-    {KEYWORD, "KEYWORD"},
+
+    // keywords
+    {AND, "AND"},
+    {OR, "OR"},
+    {CLASS, "CLASS"},
+    {IF, "IF"},
+    {ELSE, "ELSE"},
+    {TRUE, "TRUE"},
+    {FALSE, "FALSE"},
+    {FOR, "FOR"},
+    {WHILE, "WHILE"},
+    {FUN, "FUN"},
+    {RETURN, "RETURN"},
+    {SUPER, "SUPER"},
+    {THIS, "THIS"},
+    {VAR, "VAR"},
+    {NIL, "NIL"},
+    {PRINT, "PRINT"},
 };
 std::string to_string(const TokenType& type) {
     if (tokenTypeStrings.contains(type))
