@@ -34,6 +34,8 @@ dsfhio
 
 {}
 
+const _foo123 = 10;
+
 var uno = 10
 uno * dos
 

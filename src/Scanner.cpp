@@ -231,7 +231,7 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             std::stringstream buff;
             for (; i < contents.length(); ++i) {
                 c = contents.at(i);
-                if (!(std::isalpha(c) || c == '_'))
+                if (!(std::isalpha(c) || std::isdigit(c) || c == '_'))
                     break;
 
                 buff << c;
