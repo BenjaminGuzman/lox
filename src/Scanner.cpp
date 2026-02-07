@@ -175,7 +175,7 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
             break;
         case '\n':
             ++line;
-            col = 1;
+            col = 0;
             break;
         case '=':
             if (i + 1 < contents.length() && contents[i + 1] == '=') { // process the ==
@@ -190,13 +190,14 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
         case '"': { // parse strings
             Token stringToken = identifyString(contents, i + 1, line, col);
 
-            // advance the pointers to the next char that is not part of the string
-            // i currently points to '"', and the lexeme contains "the string" (with quotes), thus i should point to
-            // i = i + |"the string"| - 1 (due to the first char)
-            col += stringToken.lexeme.length() - 1;
-            i += stringToken.lexeme.length() - 1;
+            // advance the pointers to the last char of the lexeme, i.e., '"' (good strings),\n/EOF (bad strings)
+            // i currently points to '"', and the literal contains the string (without quotes), thus i should point to
+            // i = i + |the string| + 1 (due to the last '"')
+            const auto& strLiteral = std::get<std::string>(stringToken.literal); // type is guaranteed
+            col += strLiteral.length() + 1;
+            i += strLiteral.length() + 1;
             if (stringToken.type == UNTERMINATED_STRING)
-                // currently i is at either the '\n' (or EOF), so we need to go back, to process the '\n'
+                // currently i is at either the '\n' or EOF, so we need to go back, to process the '\n'
                 --i;
 
             tokens.push_back(stringToken);
@@ -211,17 +212,50 @@ std::vector<Token> Scanner::tokenize(const std::string& filepath) {
         case '7':
         case '8':
         case '9':
-        case '0': { // parse number without sign
+        case '0': { // parse number regardless of their sign
             Token number = identifyNumber(contents, i, line, col);
             tokens.push_back(number);
-            col += number.lexeme.length();
             i += number.lexeme.length();
+
+            // col currently is = index_of_first digit + 1 (it's 1-based), so
+            // (index_of_first_digit + 1) + #digits = 1 char past the number, thus, we need to decrement
+            // 'cause the next iteration will increment col and put it in the next non-number char
+            col += number.lexeme.length() - 1;
 
             // now i is at the char past the last digit in the number. We need to process that char, thus
             // we decrement i, so that in the next cycle we go to such character
             --i;
             break;
         } default:
+            // scan identifiers and keywords
+            std::stringstream buff;
+            for (; i < contents.length(); ++i) {
+                c = contents.at(i);
+                if (!(std::isalpha(c) || c == '_'))
+                    break;
+
+                buff << c;
+            }
+
+            if (!buff.view().empty()) { // it was actually an identifier or a keyword
+                std::string lexeme = buff.str(); // TODO check if the lexeme is a reserved keyword
+                tokens.emplace_back(IDENTIFIER, lexeme, "", line, col);
+
+                // col currently points to the first char in the lexeme, so col = index_of_first_char + 1
+                // but col should point to the last char of the lexeme, so we need
+                // col = col + |lexeme| - 1 = index_of_first_char + 1 + |lexeme| - 1 = index_of_first_char + |lexeme|
+                //     = index_of_last_char
+                // (this is the same logic for the numbers)
+                // we need it at the last char 'cause the next iteration will increment it and put it in the next
+                // non-identifier char
+                col += lexeme.length() - 1;
+
+                // now i is at the char past the last char in the lexeme. We need to process that char, thus
+                // we decrement i, so that in the next cycle we go to such character
+                --i;
+                break;
+            }
+
             tokens.emplace_back(UNRECOGNIZED, std::string(1, c), "", line, col);
             break;
         }
@@ -256,6 +290,8 @@ std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {GTE, "GREATER_EQUAL"},
     {STRING, "STRING"},
     {NUMBER, "NUMBER"},
+    {IDENTIFIER, "IDENTIFIER"},
+    {KEYWORD, "KEYWORD"},
 };
 std::string to_string(const TokenType& type) {
     if (tokenTypeStrings.contains(type))

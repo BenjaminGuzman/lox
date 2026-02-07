@@ -44,6 +44,8 @@ enum TokenType {
     EOF_TOKEN,
     STRING,
     NUMBER,
+    IDENTIFIER,
+    KEYWORD,
 
     /**
      * Especial value for al those tokens that are not recognized
