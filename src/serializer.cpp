@@ -31,7 +31,7 @@ int Serializer::serialize(const AST& ast) {
         bool should_use_lexeme = false;
         std::string serialization = std::visit([&should_use_lexeme]<typename E>(E&& lit) {
             if constexpr (std::is_same_v<E, const std::string&>)
-                return lit.empty() ? "null" : lit;
+                return lit;
             if constexpr (std::is_same_v<E, const RealNumber&>)
                 return to_string(lit);
             if constexpr (std::is_same_v<E, const std::monostate&>) {
