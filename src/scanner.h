@@ -75,7 +75,9 @@ enum TokenType {
      */
     UNRECOGNIZED,
     UNTERMINATED_STRING,
-    INVALID_NUMBER
+    INVALID_NUMBER,
+
+    AST_ROOT, // especial value
 };
 std::string to_string(const TokenType& type);
 inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {

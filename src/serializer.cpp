@@ -1,4 +1,4 @@
-#include "Serializer.h"
+#include "serializer.h"
 
 #include <iostream>
 #include <sstream>
@@ -24,4 +24,10 @@ int Serializer::serialize(Scanner& scanner) {
     }
 
     return n_unrecognized;
+}
+
+int Serializer::serialize(const AST& ast) {
+    for (const auto& [token, children] : ast.root.children)
+        std::cout << token.lexeme << std::endl;
+    return 0;
 }

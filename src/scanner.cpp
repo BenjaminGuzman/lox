@@ -90,6 +90,9 @@ Token parseNumber(std::ifstream& filestream, const size_t line, const size_t col
 }
 
 Token Scanner::nextToken() {
+    if (!filestream.is_open())
+        return Token{EOF_TOKEN, "", std::monostate{}, line, col};
+
     for (char c; filestream.get(c); ++col /* this is needed here! only after scanning a char, the col increments */) {
         switch (c) {
         // non-composite or especial chars
@@ -202,12 +205,14 @@ Token Scanner::nextToken() {
             col += lexeme.length() - 1;
 
             if (TOKEN_STRING_MAPPING.contains(lexeme)) // if it is a keyword
+                // TODO will adding the lexeme occupy more memory? I mean, will we have 2+ copies of "while"?
                 return Token{TOKEN_STRING_MAPPING.at(lexeme), lexeme, std::monostate{}, line, col};
 
             return Token{IDENTIFIER, lexeme, std::monostate{}, line, col};
         }
     }
 
+    filestream.close();
     return Token{EOF_TOKEN, "", std::monostate{}, line, col};
 }
 

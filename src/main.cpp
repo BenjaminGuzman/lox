@@ -5,8 +5,9 @@
 #include <string>
 #include <filesystem>
 
+#include "parser.h"
 #include "scanner.h"
-#include "Serializer.h"
+#include "serializer.h"
 
 int main(int argc, char *argv[]) {
     // Disable output buffering
@@ -29,6 +30,15 @@ int main(int argc, char *argv[]) {
         lox::Scanner scanner(abs_filepath);
         int n_unrecognized = Serializer::serialize(scanner);
         if (n_unrecognized > 0)
+            return 65;
+    } else if (command == "parse") {
+        std::string filepath = argv[2];
+        auto abs_filepath = std::filesystem::canonical(filepath);
+
+        lox::Scanner scanner(abs_filepath);
+        lox::AST ast(scanner);
+        int n_errors = Serializer::serialize(ast);
+        if (n_errors > 0)
             return 65;
     } else {
         std::cerr << "Unknown command: " << command << std::endl;
