@@ -1,6 +1,8 @@
 #ifndef CODECRAFTERS_INTERPRETER_SCANNER_H
 #define CODECRAFTERS_INTERPRETER_SCANNER_H
 #include <cmath>
+#include <fstream>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -9,6 +11,7 @@
 
 inline bool PRETTY_PRINT = false;
 
+namespace lox {
 struct RealNumber {
     unsigned long long integer{};
     unsigned long long fractional{};
@@ -20,7 +23,8 @@ std::string to_string(const RealNumber* type);
 
 // the actual memory used for a variable will be the biggest type here...
 // so it's not very efficient, but way more efficient than storing as unique_ptr, or void*, or something else...
-using underlying_t = std::variant<std::string, RealNumber>;
+// std::monostate for those tokens that do not represent a literal value
+using underlying_t = std::variant<std::monostate, std::string, RealNumber>;
 
 enum TokenType {
     LEFT_PAREN,
@@ -138,7 +142,7 @@ public:
      */
     const size_t col;
 
-    std::string string(const std::string& filepath) const;
+    [[nodiscard]] std::string string(const std::string& filepath) const;
 };
 
 using Token = BasicToken<underlying_t>;
@@ -168,23 +172,60 @@ struct BasicTokenView {
         col(token.col) {}
 };
 
+template<typename T>
+using parsingFunctionT = std::function<T(std::ifstream& filestream, const size_t line, const size_t col)>;
+
+/**
+ * Parses a string token in the next characters provided by the filestream
+ * @param filestream the filestream. First call to @link std::get(char) @endlink should return the first character that
+ * is said to be part of the string, i.e., this index shouldn't point to '"' unless the string is empty.
+ * At the return of this function, the next call to @link std::get(char) @endlink on this filestream
+ * should return the next char that is not part of the string.
+ * @param line line at which the string starts (used only to store it in the returned token)
+ * @param col col at which the string starts (used only to store it in the returned token)
+ * @return the token which can be of type @link TokenType::STRING @endlink
+ * or @link TokenType::UNTERMINATED_STRING @endlink.
+ */
+Token parseString(std::ifstream& filestream, const size_t line, const size_t col);
+
+/**
+ * Parses a number token in the next characters provided by the filestream
+ * @param filestream the filestream. First call to @link std::get(char) @endlink should return the first character that
+ * is said to be part of the number
+ * @param line line at which the number starts (used just to store it in the returned token)
+ * @param col col at which the number starts (used just to store it in the returned token)
+ * @return the token which can be of type @link TokenType::NUMBER @endlink
+ */
+Token parseNumber(std::ifstream& filestream, const size_t line, const size_t col);
+
+/**
+ * Scans tokens.
+ * This is a forward-only scanner.
+ */
 class Scanner {
-public:
-    /**
-     * Tries to read the contents of a file.
-     * @param filepath the path to the file to read
-     * @return the contents of the file
-     * @throws std::runtime_error if failed to read the file
-     */
-    static std::string read_file(const std::string& filepath);
+private:
+    std::ifstream filestream;
 
     /**
-     * Tries to tokenize the contents of a file.
-     * @param filepath the path to the file to read
-     * @return the tokens of the file
-     * @throws std::runtime_error propagated from @link Scanner::read_file @endlink
+     * Column at which this scanner currently is
      */
-    static std::vector<Token> tokenize(const std::string& filepath);
+    size_t col = 1;
+
+    /**
+     * Line at which this scanner currently is
+     */
+    size_t line = 1;
+public:
+    const std::string& filepath;
+
+    explicit Scanner(const std::string& filepath);
+    ~Scanner();
+
+    /**
+     * Scans the next token of the file, starting at the given index
+     * @return the next token of the file
+     */
+    [[nodiscard]] Token nextToken();
 };
 
 
@@ -195,6 +236,8 @@ std::string BasicToken<T>::string(const std::string& filepath) const {
                 return lit.empty() ? "null" : lit;
             if constexpr (std::is_same_v<E, const RealNumber&>)
                 return to_string(lit);
+            if constexpr (std::is_same_v<E, const std::monostate&>)
+                return std::string("null");
             return std::string("");
         }, literal);
 
@@ -218,5 +261,5 @@ std::string BasicToken<T>::string(const std::string& filepath) const {
 
     return basic_serialized_token;
 }
-
+}
 #endif //CODECRAFTERS_INTERPRETER_SCANNER_H

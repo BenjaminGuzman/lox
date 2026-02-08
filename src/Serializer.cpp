@@ -3,16 +3,24 @@
 #include <iostream>
 #include <sstream>
 
-int Serializer::serialize(const std::string& filepath, const std::vector<Token>& tokens) {
+using namespace lox;
+
+int Serializer::serialize(Scanner& scanner) {
     int n_unrecognized = 0;
-    for (auto const& token : tokens) {
+    while (true) {
+        Token token = scanner.nextToken();
+        if (token.type == EOF_TOKEN) {
+            std::cout << token.string(scanner.filepath) << std::endl;
+            break;
+        }
+
         if (token.type == UNRECOGNIZED || token.type == UNTERMINATED_STRING) {
-            std::cerr << token.string(filepath) << std::endl;
+            std::cerr << token.string(scanner.filepath) << std::endl;
             ++n_unrecognized;
             continue;
         }
 
-        std::cout << token.string(filepath) << std::endl;
+        std::cout << token.string(scanner.filepath) << std::endl;
     }
 
     return n_unrecognized;

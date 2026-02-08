@@ -5,7 +5,7 @@
 #include <string>
 #include <filesystem>
 
-#include "Scanner.h"
+#include "scanner.h"
 #include "Serializer.h"
 
 int main(int argc, char *argv[]) {
@@ -26,8 +26,8 @@ int main(int argc, char *argv[]) {
         std::string filepath = argv[2];
         auto abs_filepath = std::filesystem::canonical(filepath);
 
-        std::vector<Token> tokens = Scanner::tokenize(abs_filepath);
-        int n_unrecognized = Serializer::serialize(abs_filepath, tokens);
+        lox::Scanner scanner(abs_filepath);
+        int n_unrecognized = Serializer::serialize(scanner);
         if (n_unrecognized > 0)
             return 65;
     } else {
