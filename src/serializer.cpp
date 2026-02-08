@@ -27,7 +27,24 @@ int Serializer::serialize(Scanner& scanner) {
 }
 
 int Serializer::serialize(const AST& ast) {
-    for (const auto& [token, children] : ast.root.children)
-        std::cout << token.lexeme << std::endl;
+    for (const auto& [token, children] : ast.root.children) {
+        bool should_use_lexeme = false;
+        std::string serialization = std::visit([&should_use_lexeme]<typename E>(E&& lit) {
+            if constexpr (std::is_same_v<E, const std::string&>)
+                return lit.empty() ? "null" : lit;
+            if constexpr (std::is_same_v<E, const RealNumber&>)
+                return to_string(lit);
+            if constexpr (std::is_same_v<E, const std::monostate&>) {
+                should_use_lexeme = true;
+                return std::string("");
+            }
+            return std::string("");
+        }, token.literal);
+
+        if (should_use_lexeme)
+            serialization = token.lexeme;
+
+        std::cout << serialization << std::endl;
+    }
     return 0;
 }

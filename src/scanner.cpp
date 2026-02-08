@@ -68,6 +68,12 @@ Token parseNumber(std::ifstream& filestream, const size_t line, const size_t col
             }
         }
 
+        // remove trailing 0s
+        while (fractional > 0 && fractional % 10 == 0) {
+            fractional /= 10;
+            --fractional_digits;
+        }
+
         // if (fractional_digits == 0) {
             // let's just say "40.whatever" makes the number 40 as a valid integer...
         // }
@@ -216,6 +222,9 @@ Token Scanner::nextToken() {
     return Token{EOF_TOKEN, "", std::monostate{}, line, col};
 }
 
+double RealNumber::to_double() const {
+    return static_cast<double>(integer) + static_cast<double>(fractional) / pow(10, n_fractional_digits);
+}
 
 std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {LEFT_PAREN, "LEFT_PAREN"},

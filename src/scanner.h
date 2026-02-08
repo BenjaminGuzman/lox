@@ -17,6 +17,7 @@ struct RealNumber {
     unsigned long long fractional{};
     int n_fractional_digits{};
     bool is_negative = false;
+    [[nodiscard]] double to_double() const;
 };
 std::string to_string(const RealNumber& number);
 std::string to_string(const RealNumber* type);
