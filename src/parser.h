@@ -11,6 +11,7 @@ struct ASTNode {
 class AST {
 private:
     Scanner& scanner;
+    void build(ASTNode& node);
 public:
     ASTNode root;
     AST(Scanner& scanner, bool autobuild = true);

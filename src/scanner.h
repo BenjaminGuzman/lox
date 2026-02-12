@@ -130,8 +130,7 @@ public:
     const std::string lexeme;
 
     /**
-     * The actual value that composes the token. May be null if it makes sense for the lexeme to not have a value
-     * (e.g., EOF, parenthesis, etc...)
+     * The actual value that composes the token. Prefer the get_literal method
      */
     const T literal;
 
@@ -146,6 +145,7 @@ public:
     const size_t col;
 
     [[nodiscard]] std::string string(const std::string& filepath) const;
+    [[nodiscard]] T get_literal() const;
 };
 
 using Token = BasicToken<underlying_t>;
@@ -170,7 +170,7 @@ struct BasicTokenView {
     explicit BasicTokenView(const Token& token) :
         type(token.type),
         lexeme(token.lexeme),
-        literal(std::get<T>(token.literal)),
+        literal(std::get<T>(token.get_literal())),
         line(token.line),
         col(token.col) {}
 };
@@ -231,18 +231,25 @@ public:
     [[nodiscard]] Token nextToken();
 };
 
+template<typename T>
+T BasicToken<T>::get_literal() const {
+    if (type == STRING)
+        return lexeme.substr(1, lexeme.length() - 2);
+
+    return literal;
+}
 
 template<typename T>
 std::string BasicToken<T>::string(const std::string& filepath) const {
     std::string literal_value = std::visit([]<typename E>(E&& lit) {
-            if constexpr (std::is_same_v<E, const std::string&>)
+            if constexpr (std::is_same_v<std::decay_t<E>, std::string>)
                 return lit.empty() ? "null" : lit;
-            if constexpr (std::is_same_v<E, const RealNumber&>)
+            if constexpr (std::is_same_v<std::decay_t<E>, RealNumber>)
                 return to_string(lit);
-            if constexpr (std::is_same_v<E, const std::monostate&>)
+            if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>)
                 return std::string("null");
             return std::string("");
-        }, literal);
+        }, get_literal());
 
     std::string basic_serialized_token = to_string(type) + " " + lexeme + " " + literal_value;
 

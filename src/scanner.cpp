@@ -22,7 +22,7 @@ Token parseString(std::ifstream& filestream, const size_t line, const size_t col
         // TODO add escape sequences??
         if (c == '"') {
             auto s = buff.str();
-            return Token{STRING, '"' + s + '"', s, line, col};
+            return Token{STRING, '"' + s + '"', "", line, col};
         } else if (c == '\n') { // no multi-line strings supported now
             auto s = buff.str();
             filestream.putback(c); // the '\n' is not part of the string, so we need to put it back
@@ -226,7 +226,7 @@ double RealNumber::to_double() const {
     return static_cast<double>(integer) + static_cast<double>(fractional) / pow(10, n_fractional_digits);
 }
 
-std::pmr::unordered_map<TokenType, std::string> tokenTypeStrings = {
+std::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {LEFT_PAREN, "LEFT_PAREN"},
     {RIGHT_PAREN, "RIGHT_PAREN"},
     {EOF_TOKEN, "EOF"},
