@@ -3,17 +3,26 @@
 #include "scanner.h"
 
 namespace lox {
-struct ASTNode {
-    Token token;
-    std::vector<ASTNode> children;
+class ASTNode {
+public:
+    const Token token;
+    std::vector<std::unique_ptr<ASTNode>> children;
+    ASTNode* parent;
+
+    /**
+     *
+     * @return the operator type of the token as in @link TokenOpType @endlink, except that this is not ambiguous, if
+     * the operator by its nature can be unary or binary, this method will resolve whether it is unary or binary, thus
+     * resolving only @link TokenOpType#UNARY @endlink OR @link TokenOpType#BINARY @endlink.
+     */
+    [[nodiscard]] TokenOpType op_type() const;
 };
 
 class AST {
 private:
     Scanner& scanner;
-    void build(ASTNode& node);
 public:
-    ASTNode root;
+    std::unique_ptr<ASTNode> root;
     AST(Scanner& scanner, bool autobuild = true);
 
     void build();

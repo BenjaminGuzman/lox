@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <list>
 
 inline bool PRETTY_PRINT = false;
 
@@ -26,6 +27,16 @@ std::string to_string(const RealNumber* type);
 // so it's not very efficient, but way more efficient than storing as unique_ptr, or void*, or something else...
 // std::monostate for those tokens that do not represent a literal value
 using underlying_t = std::variant<std::monostate, std::string, RealNumber>;
+
+// Token operator type
+enum TokenOpType {
+    NOT_OPERATOR, // token doesn't represent an operator
+    UNARY, // token is a unary operator
+    BINARY, // token is a binary operator
+    UNARY_OR_BINARY, // token can either be a unary or binary operator
+    BINARY_OR_NOT_OPERATOR, // token can either be a binary operator or not an operator at all
+    MULTI // token is a multi-token operator
+};
 
 enum TokenType {
     LEFT_PAREN,
@@ -119,6 +130,47 @@ inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {
     {"print", PRINT},
 };
 
+inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = {
+    {STRING, NOT_OPERATOR},
+    {NUMBER, NOT_OPERATOR},
+    {LEFT_PAREN, MULTI},
+    {RIGHT_PAREN, NOT_OPERATOR},
+    {LEFT_BRACE, MULTI},
+    {RIGHT_BRACE, NOT_OPERATOR},
+    {COMMA, BINARY}, // ?
+    {DOT, NOT_OPERATOR}, // ?
+    {MINUS, UNARY_OR_BINARY},
+    {PLUS, UNARY_OR_BINARY},
+    {SEMICOLON, NOT_OPERATOR},
+    {SLASH, BINARY_OR_NOT_OPERATOR},
+    {STAR, BINARY},
+    {EQ, BINARY},
+    {EQEQ, BINARY},
+    {NOT, UNARY},
+    {NEQ, BINARY},
+    {LT, BINARY},
+    {LTE, BINARY},
+    {GT, BINARY},
+    {GTE, BINARY},
+    {AND, BINARY},
+    {OR, BINARY},
+    {CLASS, NOT_OPERATOR},
+    {IF, UNARY},
+    {ELSE, NOT_OPERATOR},
+    {TRUE, NOT_OPERATOR},
+    {FALSE, NOT_OPERATOR},
+    {FOR, NOT_OPERATOR},
+    {WHILE, NOT_OPERATOR},
+    {FUN, NOT_OPERATOR},
+    {RETURN, NOT_OPERATOR},
+    {SUPER, NOT_OPERATOR},
+    {THIS, NOT_OPERATOR},
+    {VAR, NOT_OPERATOR},
+    {NIL, NOT_OPERATOR},
+    {PRINT, NOT_OPERATOR},
+    {AST_ROOT, NOT_OPERATOR},
+};
+
 template<typename T>
 class BasicToken {
 public:
@@ -137,15 +189,20 @@ public:
     /**
      * Line in the file at which the token was found
      */
-    const size_t line;
+    const size_t line{};
 
     /**
      * Column in the file at which the token was found
      */
-    const size_t col;
+    const size_t col{};
 
     [[nodiscard]] std::string string(const std::string& filepath) const;
     [[nodiscard]] T get_literal() const;
+
+    /**
+     * @return the operator type of the token as in @link TokenOpType @endlink
+     */
+    [[nodiscard]] TokenOpType op_type() const;
 };
 
 using Token = BasicToken<underlying_t>;
@@ -218,6 +275,8 @@ private:
      * Line at which this scanner currently is
      */
     size_t line = 1;
+
+    [[nodiscard]] Token _next_token();
 public:
     const std::string& filepath;
 
@@ -228,7 +287,7 @@ public:
      * Scans the next token of the file, starting at the given index
      * @return the next token of the file
      */
-    [[nodiscard]] Token nextToken();
+    [[nodiscard]] Token next_token();
 };
 
 template<typename T>
@@ -237,6 +296,11 @@ T BasicToken<T>::get_literal() const {
         return lexeme.substr(1, lexeme.length() - 2);
 
     return literal;
+}
+
+template<typename T>
+TokenOpType BasicToken<T>::op_type() const {
+    return TOKEN_OP_TYPE_MAPPING.at(type);
 }
 
 template<typename T>

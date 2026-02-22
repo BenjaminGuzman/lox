@@ -95,7 +95,7 @@ Token parseNumber(std::ifstream& filestream, const size_t line, const size_t col
     };
 }
 
-Token Scanner::nextToken() {
+Token Scanner::_next_token() {
     if (!filestream.is_open())
         return Token{EOF_TOKEN, "", std::monostate{}, line, col};
 
@@ -220,6 +220,10 @@ Token Scanner::nextToken() {
 
     filestream.close();
     return Token{EOF_TOKEN, "", std::monostate{}, line, col};
+}
+
+Token Scanner::next_token() {
+    return _next_token();
 }
 
 double RealNumber::to_double() const {

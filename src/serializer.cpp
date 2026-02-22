@@ -10,7 +10,7 @@ using namespace lox;
 int Serializer::serialize(Scanner& scanner) {
     int n_unrecognized = 0;
     while (true) {
-        Token token = scanner.nextToken();
+        Token token = scanner.next_token();
         if (token.type == EOF_TOKEN) {
             std::cout << token.string(scanner.filepath) << std::endl;
             break;
@@ -28,66 +28,94 @@ int Serializer::serialize(Scanner& scanner) {
     return n_unrecognized;
 }
 
-std::string to_string_parsed(const Token& token) {
-    switch (token.type) {
+/**
+ *
+ * @param type token operator type
+ * @return true if the serialization of the given operation should start with '(' and end with ')'
+ */
+bool operator_should_be_enclosed_by_paren(const TokenOpType type) {
+    switch (type) {
+    case UNARY:
+    case BINARY:
+    case MULTI:
+        return true;
+    default:
+        return false;
+    }
+}
+
+void add_to_buff(const ASTNode* node, std::stringstream& buff) {
+    // the parent is serialized as group, thus, its children (which are currently being serialized by this func)
+    //  should be prepended with a space
+    if (operator_should_be_enclosed_by_paren(node->parent->op_type()))
+        buff << " ";
+
+    if (operator_should_be_enclosed_by_paren(node->op_type()))
+        buff << "(";
+
+    switch (node->token.type) {
     case LEFT_PAREN:
-        return "(group";
-    case RIGHT_PAREN:
-        return ")";
-    default:{}
+        buff << "group";
+        return;
+    default: {}
     }
 
     bool should_use_lexeme = false;
     std::string serialization = std::visit([&should_use_lexeme]<typename E>(E&& lit) {
-        if constexpr (std::is_same_v<E, const std::string&> || std::is_same_v<E, std::string>)
+        if constexpr (std::is_same_v<std::decay_t<E>, std::string>)
             return lit;
-        if constexpr (std::is_same_v<E, const RealNumber&> || std::is_same_v<E, RealNumber>)
+        if constexpr (std::is_same_v<std::decay_t<E>, RealNumber>)
             return to_string(lit);
-        if constexpr (std::is_same_v<E, const std::monostate&> || std::is_same_v<E, std::monostate>) {
+        if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>) {
             should_use_lexeme = true;
             return std::string("");
         }
         return std::string("");
-    }, token.get_literal());
+    }, node->token.get_literal());
 
     if (should_use_lexeme)
-        serialization = token.lexeme;
+        serialization = node->token.lexeme;
 
-    return serialization;
+    buff << serialization;
+}
+
+/**
+ * Adds the children nodes of the given node to the given stack so that it can be traversed in a preorder manner
+ * (preorder traversal)
+ * @param node the current node whose children will be added to the given stack
+ * @param nodes the stack of child nodes (pending nodes to be visited)
+ */
+void push_children_into_stack(const ASTNode* node, std::stack<const ASTNode*>& nodes) {
+    if (operator_should_be_enclosed_by_paren(node->op_type()))
+        nodes.push(nullptr); // mark the end of the children of a parent node
+
+    if (!node->children.empty()) {
+        for (size_t i = node->children.size() - 1; i != 0; --i)
+            nodes.push(node->children.at(i).get());
+        nodes.push(node->children.at(0).get());
+    }
 }
 
 int Serializer::serialize(const AST& ast) {
     std::stack<const ASTNode*> nodes;
-    std::vector<std::string> serialized_tokens;
-    nodes.push(&ast.root);
-    while (!nodes.empty()) {
-        const auto curr = nodes.top();
-        nodes.pop();
+    std::stringstream buff;
 
-        serialized_tokens.push_back(to_string_parsed(curr->token));
-        if (!curr->children.empty()) {
-            for (size_t i = curr->children.size() - 1; i != 0; --i)
-                nodes.push(&curr->children.at(i));
-            nodes.push(&curr->children.at(0));
+    push_children_into_stack(ast.root.get(), nodes);
+    while (!nodes.empty()) {
+        auto curr = nodes.top();
+        nodes.pop();
+        if (curr == nullptr) { // by now, we've previously processed all the children of a parent
+            buff << ")";
+            if (!nodes.empty() && nodes.top() != nullptr) // add a space iff the next node won't add a ')'
+                buff << " ";
+            continue;
         }
+
+        add_to_buff(curr, buff);
+        push_children_into_stack(curr, nodes);
     }
 
-    const std::string s = std::accumulate(
-        std::next(serialized_tokens.begin()),
-        serialized_tokens.end(),
-        serialized_tokens.at(0),
-        [](const std::string& a, const std::string& b) {
-            if (b == ")")
-                return a + b;
-            if (a.empty())
-                return b;
-            if (b.empty())
-                return a;
-
-            return a + " " + b;
-        }
-    );
-    std::cout << s << std::endl;
+    std::cout << buff.str() << std::endl;
 
     return 0;
 }
