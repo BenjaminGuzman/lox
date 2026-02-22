@@ -216,6 +216,12 @@ public:
      * @return true if the token is an arithmetic operator
      */
     [[nodiscard]] bool is_arithmetic_operator() const;
+
+    /**
+     *
+     * @return the operator priority, the higher the value, the higher the priority
+     */
+    [[nodiscard]] uint16_t op_priority() const;
 };
 
 using Token = BasicToken<underlying_t>;
@@ -346,6 +352,22 @@ bool BasicToken<T>::is_arithmetic_operator() const {
         return true;
     default:
         return false;
+    }
+}
+
+template<typename T>
+uint16_t BasicToken<T>::op_priority() const {
+    switch (type) {
+    case PLUS:
+    case MINUS:
+        return 10;
+    case STAR:
+    case SLASH:
+        return 20;
+    case LEFT_PAREN:
+        return 30;
+    default:
+        return 0;
     }
 }
 
