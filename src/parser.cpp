@@ -49,6 +49,16 @@ void reorder_for_operator_precedence(std::unique_ptr<ASTNode> operator_node, AST
 
 
 void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std::stack<ASTNode*>& parentNodes) const {
+    if (parent->op_type() == UNARY) { // finish the unary expression, e.g., (- 70)
+        auto node = std::make_unique<ASTNode>(ASTNode{
+            .token = curr_token,
+            .parent = parent,
+        });
+        parent->children.push_back(std::move(node));
+        parentNodes.pop();
+        parent = parentNodes.top();
+    }
+
     auto operator_node = std::make_unique<ASTNode>(ASTNode{
         .token = scanner.next_token(),
         .parent = parent,
@@ -60,24 +70,26 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
         return;
     }
 
-    if (parent->op_type() == BINARY) {
-        if (parent->token.op_priority() >= operator_node->token.op_priority()) {
-            auto rhs_node = std::make_unique<ASTNode>(ASTNode{
-                .token = curr_token,
-                .parent = parent
-            });
+    if (parent->op_type() == BINARY && parent->token.op_priority() >= operator_node->token.op_priority()) {
+        auto rhs_node = std::make_unique<ASTNode>(ASTNode{
+            .token = curr_token,
+            .parent = parent
+        });
+        if (parent->children.size() < 2)
             parent->children.push_back(std::move(rhs_node));
+            // due to how we parse unary operators (in the build() loop),
+            // the current operator may already be an RHS of a binary operator, and thus,
+            // the expression may already be complete. Especially when operands are (- 70)
 
-            // e.g. a * b - c, where parent = (* a b), operator_node = -
-            // in this case we should do operator_node = (- (* a b) <should be c>)
-            // reorder is needed otherwise it'll end up as (* a (- b c))
-            reorder_for_operator_precedence(std::move(operator_node), parent, parentNodes);
-            return;
-        }
+        // e.g. a * b - c, where parent = (* a b), operator_node = -
+        // in this case we should do operator_node = (- (* a b) <should be c>)
+        // reorder is needed otherwise it'll end up as (* a (- b c))
+        reorder_for_operator_precedence(std::move(operator_node), parent, parentNodes);
+        return;
     }
 
     // not a parenthesis or binary expression, may be a literal or a number
-    std::unique_ptr<ASTNode> lhs_operand_node = std::make_unique<ASTNode>(ASTNode{
+    auto lhs_operand_node = std::make_unique<ASTNode>(ASTNode{
         .token = curr_token,
         .parent = operator_node.get()
     });
@@ -108,6 +120,8 @@ void AST::build() {
                 .token = token,
                 .parent = parent,
             });
+            if (token.type == MINUS || token.type == PLUS || token.type == NOT)
+                operator_node->must_be_op_type = UNARY;
             parent->children.push_back(std::move(operator_node)); // The tree itself should be the owner of all the nodes (hence the std::move)
             operator_node = nullptr;
             parentNodes.push(parent->children.back().get());
