@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <stack>
+#include <memory>
 
 namespace lox {
 TokenOpType ASTNode::op_type() const {
