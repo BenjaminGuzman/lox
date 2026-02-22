@@ -342,6 +342,7 @@ bool BasicToken<T>::is_arithmetic_operator() const {
     case PLUS:
     case MINUS:
     case STAR:
+    case SLASH:
         return true;
     default:
         return false;
