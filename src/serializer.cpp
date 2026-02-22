@@ -45,6 +45,12 @@ bool operator_should_be_enclosed_by_paren(const TokenOpType type) {
 }
 
 void add_to_buff(const ASTNode* node, std::stringstream& buff) {
+    switch (node->token.type) {
+    case RIGHT_PAREN: // right parenthesis is not serializable
+        return;
+    default: {}
+    }
+
     // the parent is serialized as group, thus, its children (which are currently being serialized by this func)
     //  should be prepended with a space
     if (operator_should_be_enclosed_by_paren(node->parent->op_type()))
@@ -106,8 +112,6 @@ int Serializer::serialize(const AST& ast) {
         nodes.pop();
         if (curr == nullptr) { // by now, we've previously processed all the children of a parent
             buff << ")";
-            if (!nodes.empty() && nodes.top() != nullptr) // add a space iff the next node won't add a ')'
-                buff << " ";
             continue;
         }
 

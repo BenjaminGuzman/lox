@@ -133,6 +133,7 @@ inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {
 inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = {
     {STRING, NOT_OPERATOR},
     {NUMBER, NOT_OPERATOR},
+    {IDENTIFIER, NOT_OPERATOR},
     {LEFT_PAREN, MULTI},
     {RIGHT_PAREN, NOT_OPERATOR},
     {LEFT_BRACE, MULTI},
@@ -203,6 +204,18 @@ public:
      * @return the operator type of the token as in @link TokenOpType @endlink
      */
     [[nodiscard]] TokenOpType op_type() const;
+
+    /**
+     *
+     * @return true if the token can be an operand of an arithmetic expression
+     */
+    [[nodiscard]] bool can_be_arithmetic_operand() const;
+
+    /**
+     *
+     * @return true if the token is an arithmetic operator
+     */
+    [[nodiscard]] bool is_arithmetic_operator() const;
 };
 
 using Token = BasicToken<underlying_t>;
@@ -284,10 +297,17 @@ public:
     ~Scanner();
 
     /**
-     * Scans the next token of the file, starting at the given index
+     * Scans the next token of the file
      * @return the next token of the file
      */
     [[nodiscard]] Token next_token();
+
+    /**
+     * Scans the next token of the file without moving the pointer so that the next call to @link next_token() @endlink
+     * shall return the same token.
+     * @return the next token of the file.
+     */
+    [[nodiscard]] Token peek_next();
 };
 
 template<typename T>
@@ -301,6 +321,31 @@ T BasicToken<T>::get_literal() const {
 template<typename T>
 TokenOpType BasicToken<T>::op_type() const {
     return TOKEN_OP_TYPE_MAPPING.at(type);
+}
+
+template<typename T>
+bool BasicToken<T>::can_be_arithmetic_operand() const {
+    switch (type) {
+    case NUMBER:
+    case STRING:
+    case IDENTIFIER:
+    case RIGHT_PAREN: // a group can be an operand, e.g. (10 + 9) * 9
+        return true;
+    default:
+        return false;
+    }
+}
+
+template<typename T>
+bool BasicToken<T>::is_arithmetic_operator() const {
+    switch (type) {
+    case PLUS:
+    case MINUS:
+    case STAR:
+        return true;
+    default:
+        return false;
+    }
 }
 
 template<typename T>

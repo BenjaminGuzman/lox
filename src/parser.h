@@ -11,6 +11,11 @@ public:
     ASTNode* parent;
 
     /**
+     * Indicates the token operation type that this operator must have (based on the context)
+     */
+    std::optional<TokenOpType> must_be_op_type;
+
+    /**
      *
      * @return the operator type of the token as in @link TokenOpType @endlink, except that this is not ambiguous, if
      * the operator by its nature can be unary or binary, this method will resolve whether it is unary or binary, thus
@@ -22,6 +27,15 @@ public:
 class AST {
 private:
     Scanner& scanner;
+
+    /**
+     *
+     * @param curr_token the current token (which may be the LHS of the binary operation)
+     * @param parent the current parent
+     * @param parentNodes the stack of parents
+     * @note the call to @link scanner.next_token() @endlink should return a binary operator!
+     */
+    void handle_binary_operators(const Token& curr_token, ASTNode* parent, std::stack<ASTNode*>& parentNodes) const;
 public:
     std::unique_ptr<ASTNode> root;
     AST(Scanner& scanner, bool autobuild = true);

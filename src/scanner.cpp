@@ -226,6 +226,13 @@ Token Scanner::next_token() {
     return _next_token();
 }
 
+Token Scanner::peek_next() {
+    auto curr_get_pos = filestream.tellg();
+    auto token = _next_token();
+    filestream.seekg(curr_get_pos);
+    return token;
+}
+
 double RealNumber::to_double() const {
     return static_cast<double>(integer) + static_cast<double>(fractional) / pow(10, n_fractional_digits);
 }

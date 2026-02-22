@@ -4,6 +4,9 @@
 
 namespace lox {
 TokenOpType ASTNode::op_type() const {
+    if (must_be_op_type.has_value())
+        return must_be_op_type.value();
+
     const auto type = token.op_type();
     switch (type) {
     case UNARY_OR_BINARY:
@@ -19,6 +22,43 @@ AST::AST(Scanner& scanner, bool autobuild) : scanner(scanner), root(std::make_un
         build();
 }
 
+void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std::stack<ASTNode*>& parentNodes) const {
+    auto operator_node = std::make_unique<ASTNode>(ASTNode{
+        .token = scanner.next_token(),
+        .parent = parent,
+        .must_be_op_type = BINARY
+    });
+
+    std::unique_ptr<ASTNode> lhs_operand_node;
+    if (curr_token.type == RIGHT_PAREN) { // the whole parenthesis expression should be the lhs operand
+        // parent(= parenthesis expression)->parent->children.back() = parenthesis expression
+        // with this we get the actual ownership of the parenthesis expression. It should be owned by this operator as its LHS operand
+        auto parenthesis_expression = parent;
+        auto parent_of_parenthesis_expression = parenthesis_expression->parent;
+        operator_node->parent = parent_of_parenthesis_expression;
+        lhs_operand_node = std::move(parent_of_parenthesis_expression->children.back());
+        operator_node->children.push_back(std::move(lhs_operand_node));
+        lhs_operand_node = nullptr;
+
+        // replace the parenthesis expression with the operator
+        parent_of_parenthesis_expression->children.back() = std::move(operator_node);
+        operator_node = nullptr;
+        parenthesis_expression->parent = parent_of_parenthesis_expression->children.back().get(); // parenthesis expression parent is the operator node
+        parentNodes.top() = parent_of_parenthesis_expression->children.back().get();
+        return;
+    }
+
+    lhs_operand_node = std::make_unique<ASTNode>(ASTNode{
+        .token = curr_token,
+        .parent = operator_node.get()
+    });
+    operator_node->children.push_back(std::move(lhs_operand_node));
+    lhs_operand_node = nullptr;
+    parent->children.push_back(std::move(operator_node));
+    operator_node = nullptr;
+    parentNodes.push(parent->children.back().get());
+}
+
 void AST::build() {
     std::stack<ASTNode*> parentNodes;
     parentNodes.push(root.get());
@@ -30,76 +70,81 @@ void AST::build() {
         auto parent = parentNodes.top();
 
         switch (token.type) {
+        // all these have operands that are expected to be encountered next
+        case NOT:
         case LEFT_PAREN: {
-            auto group = std::make_unique<ASTNode>(ASTNode{
-                .token = token,
-                .parent = parent,
-            });
-            parent->children.push_back(std::move(group)); // The tree itself should be the owner of all the nodes (hence the std::move)
-            parentNodes.push(parent->children.back().get());
-            break;
-        }
-        case RIGHT_PAREN: {
-            parentNodes.pop(); // the parent for the next node shouldn't be the current group
-            break;
-        }
-        case NOT: {
-            Token next_token = scanner.next_token();
             auto operator_node = std::make_unique<ASTNode>(ASTNode{
                 .token = token,
                 .parent = parent,
             });
-            auto operand_node = std::make_unique<ASTNode>(ASTNode{
-                .token = next_token,
-                .parent = operator_node.get(),
-            });
-            operator_node->children.push_back(std::move(operand_node));
-            parent->children.push_back(std::move(operator_node));
+            parent->children.push_back(std::move(operator_node)); // The tree itself should be the owner of all the nodes (hence the std::move)
+            operator_node = nullptr;
+            parentNodes.push(parent->children.back().get());
             break;
         }
+        // all these have operands that are expected to be either encountered next or previously (e.g., a + b)
         case MINUS:
-        case PLUS: {
-            auto op_node = std::make_unique<ASTNode>(ASTNode{
-                .token = token,
-                .parent = parent,
-            });
-
-            // construct the RHS
-            Token next_token = scanner.next_token();
-            auto rhs_node = std::make_unique<ASTNode>(ASTNode{
-                .token = next_token,
-                .parent = op_node.get()
-            });
-            bool is_next_token_a_number = next_token.type == NUMBER; // FIXME
-
-            // check if we have LHS (it may have been added as child of the current parent, but it should be a child
-            //  of the current operator node)
-            bool is_prev_token_a_number = !parent->children.empty() && parent->children.back()->token.type == NUMBER;
-            if (is_prev_token_a_number && is_next_token_a_number) { // check if it's a binary operator
-                // move the LHS from the parent to the operator node
-                auto& lhs_node = parent->children.back();
-                lhs_node->parent = op_node.get();
-                op_node->children.push_back(std::move(lhs_node));
-                parent->children.pop_back();
-
-                // add RHS
-                op_node->children.push_back(std::move(rhs_node));
-            } else if (is_next_token_a_number) { // check if it's a unary operator
-                op_node->children.push_back(std::move(rhs_node));
-            } else {
-                std::cerr << "Operands are wrong for operator '" << op_node->token.lexeme << "' at " << scanner.filepath << ":" << token.line << ":" << token.col
-                          << ". Ignoring these tokens...";
+        case PLUS:
+        default:
+            // handle binary arithmetic operators
+            if (scanner.peek_next().is_arithmetic_operator() && token.can_be_arithmetic_operand()) {
+                handle_binary_operators(token, parent, parentNodes);
+                break;
             }
 
-            parent->children.push_back(std::move(op_node));
-            break;
-        }
-        default:
             auto node = std::make_unique<ASTNode>(ASTNode{
                 .token = token,
                 .parent = parent,
             });
             parent->children.push_back(std::move(node));
+            node = nullptr;
+
+            if (token.type == RIGHT_PAREN)
+                parentNodes.pop(); // the parent for the next node shouldn't be the current group
+        }
+
+        // pop from the stack all those operators whose operands have been provided
+        bool keep_poping = true;
+        while (!parentNodes.empty() && keep_poping) {
+            keep_poping = false;
+            switch (parentNodes.top()->op_type()) {
+                case UNARY: // operand has just been added in lines above
+                    if (parentNodes.top()->children.size() == 1) {
+                        parentNodes.pop(); // operand has been provided
+                        keep_poping = true;
+                    }
+                    break;
+                case BINARY:
+                    if (parentNodes.top()->children.size() == 2) {
+                        parentNodes.pop(); // both operands have been provided
+                        keep_poping = true;
+                    }
+                    break;
+                default:{};
+            }
+        }
+    }
+
+    // pop from the stack all those operators whose operands have been provided
+    bool keep_poping = true;
+    while (!parentNodes.empty() && keep_poping) {
+        keep_poping = false;
+        switch (parentNodes.top()->op_type()) {
+        case UNARY: // operand has just been added in lines above
+            if (parentNodes.top()->children.size() == 1) {
+                parentNodes.pop(); // operand has been provided
+                keep_poping = true;
+            } else
+                // syntax error
+            break;
+        case BINARY:
+            if (parentNodes.top()->children.size() == 2) {
+                parentNodes.pop(); // both operands have been provided
+                keep_poping = true;
+            } else
+                // syntax error
+            break;
+        default:{};
         }
     }
 }
