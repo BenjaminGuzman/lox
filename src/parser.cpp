@@ -71,6 +71,8 @@ void AST::build() {
 
         switch (token.type) {
         // all these have operands that are expected to be encountered next
+        case MINUS: // as binary operator is handled in the default case
+        case PLUS: // as binary operator is handled in the default case
         case NOT:
         case LEFT_PAREN: {
             auto operator_node = std::make_unique<ASTNode>(ASTNode{
@@ -82,9 +84,6 @@ void AST::build() {
             parentNodes.push(parent->children.back().get());
             break;
         }
-        // all these have operands that are expected to be either encountered next or previously (e.g., a + b)
-        case MINUS:
-        case PLUS:
         default:
             // handle binary arithmetic operators
             if (scanner.peek_next().is_arithmetic_operator() && token.can_be_arithmetic_operand()) {
