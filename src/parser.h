@@ -1,6 +1,7 @@
 #ifndef CODECRAFTERS_INTERPRETER_PARSER_H
 #define CODECRAFTERS_INTERPRETER_PARSER_H
 #include "scanner.h"
+#include <memory>
 
 namespace lox {
 class ASTNode {
