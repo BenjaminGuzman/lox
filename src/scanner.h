@@ -217,6 +217,9 @@ public:
      */
     [[nodiscard]] bool is_arithmetic_operator() const;
 
+    [[nodiscard]] bool can_be_comparison_operand() const;
+    [[nodiscard]] bool is_comparison_operator() const;
+
     /**
      *
      * @return the operator priority, the higher the value, the higher the priority
@@ -349,6 +352,34 @@ bool BasicToken<T>::is_arithmetic_operator() const {
     case MINUS:
     case STAR:
     case SLASH:
+        return true;
+    default:
+        return false;
+    }
+}
+
+template<typename T>
+bool BasicToken<T>::can_be_comparison_operand() const {
+    switch (type) {
+    case NUMBER:
+    case STRING:
+    case IDENTIFIER:
+    case RIGHT_PAREN: // a group can be an operand, e.g. (10 + 9) < 9
+        return true;
+    default:
+        return false;
+    }
+}
+
+template<typename T>
+bool BasicToken<T>::is_comparison_operator() const {
+    switch (type) {
+    case EQEQ:
+    case NEQ:
+    case GT:
+    case GTE:
+    case LT:
+    case LTE:
         return true;
     default:
         return false;

@@ -225,8 +225,11 @@ void AST::build() {
             break;
         }
         default:
-            // handle binary arithmetic operators (TODO improve this, start from right to left)
-            if (token.can_be_arithmetic_operand() && scanner.peek_next().is_arithmetic_operator()) {
+            // handle binary operators (TODO improve this, start from right to left)
+            auto next = scanner.peek_next();
+            bool valid_binary_operand = token.can_be_arithmetic_operand() || token.can_be_comparison_operand();
+            bool valid_binary_operator = next.is_arithmetic_operator() || next.is_comparison_operator();
+            if (valid_binary_operand && valid_binary_operator) {
                 handle_binary_operators(token, parent, parentNodes);
                 break;
             }
