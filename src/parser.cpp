@@ -21,6 +21,37 @@ AST::AST(Scanner& scanner, bool autobuild) : scanner(scanner), root(std::make_un
         build();
 }
 
+void ensure_right_associativity(const ASTNode* parent) {
+    ASTNode* grandparent;
+    while ((grandparent = parent->parent) != nullptr
+        && grandparent->op_type() == BINARY
+        && grandparent->token.op_priority() >= parent->token.op_priority()) {
+        //         gg                gg
+        //        /                /
+        //       +(g)             +(p)
+        //      /  \     ->      /   \
+        //     a   +(p)         +(g)  ?
+        //        /  \          /  \
+        //       *    ?        a    *
+        //      / \                / \
+        //     b   c              b   c
+        // for the expression a + b * c + d
+        auto gg = grandparent->parent;
+
+        // modify grandparent
+        auto parent_value = std::move(grandparent->children.back());
+        grandparent->children.back() = std::move(parent_value->children.back());
+        grandparent->parent = parent_value->parent;
+
+        // modify parent
+        parent_value->children.back() = std::move(gg->children.back());
+        parent_value->parent = gg;
+
+        // modify grand-grandparent
+        gg->children.back() = std::move(parent_value);
+        }
+}
+
 /**
  * This method replaces the parent (p) by, and adds it as child of, the given operator node (o)
  *          g                g
@@ -47,6 +78,8 @@ void replace_parent_and_make_it_child(ASTNode* parent, std::unique_ptr<ASTNode> 
     const auto& operator_node_ref = grandparent->children.back();
     parent->parent = operator_node_ref.get();
     parentNodes.top() = operator_node_ref.get();
+
+    ensure_right_associativity(parentNodes.top());
 }
 
 /**
@@ -60,13 +93,15 @@ void replace_parent_and_make_it_child(ASTNode* parent, std::unique_ptr<ASTNode> 
  * @note the call to @link scanner.next_token() @endlink should return a binary operator!
  */
 void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std::stack<ASTNode*>& parentNodes) const {
+    ASTNode* unary_expression = nullptr;
     if (parent->op_type() == UNARY) { // finish the unary expression, e.g., (- 70)
         auto node = std::make_unique<ASTNode>(ASTNode{
             .token = curr_token,
             .parent = parent,
         });
         parent->children.push_back(std::move(node));
-        parentNodes.pop();
+        unary_expression = parentNodes.top();
+        parentNodes.pop(); // unary expression is complete
         parent = parentNodes.top();
     }
 
@@ -104,36 +139,6 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
             // this is needed to 1) preserve operator priority/precedence and 2) preserve left-to-right precedence
 
             replace_parent_and_make_it_child(parent, std::move(operator_node), parentNodes);
-            parent = parentNodes.top();
-            ASTNode* grandparent;
-            while ((grandparent = parent->parent) != nullptr
-                && grandparent->op_type() == BINARY
-                && grandparent->token.op_priority() >= parent->token.op_priority()) {
-                //         gg                gg
-                //        /                /
-                //       +(g)             +(p)
-                //      /  \     ->      /   \
-                //     a   +(p)         +(g)  ?
-                //        /  \          /  \
-                //       *    ?        a    *
-                //      / \                / \
-                //     b   c              b   c
-                // for the expression a + b * c + d
-                auto gg = grandparent->parent;
-
-                // modify grandparent
-                auto parent_value = std::move(grandparent->children.back());
-                grandparent->children.back() = std::move(parent_value->children.back());
-                grandparent->parent = parent_value->parent;
-
-                // modify parent
-                parent_value->children.back() = std::move(gg->children.back());
-                parent_value->parent = gg;
-
-                // modify grand-grandparent
-                gg->children.back() = std::move(parent_value);
-            }
-
             return;
         }
 
@@ -175,10 +180,16 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
     }
 
     // not a parenthesis, binary or unary expression, may be a literal or a number
-    auto lhs_operand_node = std::make_unique<ASTNode>(ASTNode{
-        .token = curr_token,
-        .parent = operator_node.get()
-    });
+    std::unique_ptr<ASTNode> lhs_operand_node;
+    if (unary_expression != nullptr) {
+        lhs_operand_node = std::move(unary_expression->parent->children.back());
+        unary_expression->parent->children.pop_back();
+        lhs_operand_node->parent = operator_node.get();
+    } else
+        lhs_operand_node = std::make_unique<ASTNode>(ASTNode{
+            .token = curr_token,
+            .parent = operator_node.get()
+        });
     operator_node->children.push_back(std::move(lhs_operand_node));
     lhs_operand_node = nullptr;
     parent->children.push_back(std::move(operator_node));
@@ -214,7 +225,7 @@ void AST::build() {
             break;
         }
         default:
-            // handle binary arithmetic operators
+            // handle binary arithmetic operators (TODO improve this, start from right to left)
             if (token.can_be_arithmetic_operand() && scanner.peek_next().is_arithmetic_operator()) {
                 handle_binary_operators(token, parent, parentNodes);
                 break;
