@@ -7,8 +7,7 @@ TokenOpType ASTNode::op_type() const {
     if (must_be_op_type.has_value())
         return must_be_op_type.value();
 
-    const auto type = token.op_type();
-    switch (type) {
+    switch (const auto type = token.op_type()) {
     case UNARY_OR_BINARY:
         // a validation should have been performed earlier, if size > 2, an error should have been printed
         return this->children.size() == 1 ? UNARY : BINARY;
@@ -23,31 +22,43 @@ AST::AST(Scanner& scanner, bool autobuild) : scanner(scanner), root(std::make_un
 }
 
 /**
- * @brief Reorders the AST for operator precedence.
- *
- * This function handles cases like `a * b - c`, where the AST is initially built as `(* a (- b c))`.
- * It swaps the nodes to correctly represent operator precedence, resulting in `(- (* a b) c)`.
- *
- * @param operator_node The new operator node being inserted (e.g., `-`).
- * @param parent The current parent node in the AST (e.g., `*`).
- * @param parentNodes The stack of parent nodes in the AST.
+ * This method replaces the parent (p) by, and adds it as child of, the given operator node (o)
+ *          g                g
+ *         /                /
+ *        p                o
+ *      / | \    ->       /
+ *     children          p
+ *                     / | \
+ *                    children
+ * g = grandparent
+ * @param parent the parent to be replaced by, and added as child of, the given operator node
+ * @param operator_node the operator replacing the parent
+ * @param parentNodes the stack of parent nodes
  */
-void reorder_for_operator_precedence(std::unique_ptr<ASTNode> operator_node, ASTNode* parent, std::stack<ASTNode*>& parentNodes) {
-    auto parent_expression = parent;
-    auto grandparent_expression = parent_expression->parent;
-    operator_node->parent = grandparent_expression;
-    auto lhs_operand_node = std::move(grandparent_expression->children.back()); // lhs should be the parent expression itself
-    operator_node->children.push_back(std::move(lhs_operand_node));
-    lhs_operand_node = nullptr;
+void replace_parent_and_make_it_child(ASTNode* parent, std::unique_ptr<ASTNode> operator_node, std::stack<ASTNode*>& parentNodes) {
+    auto grandparent = parent->parent;
+    auto& parent_ref = grandparent->children.back();
+    operator_node->parent = grandparent;
+    operator_node->children.push_back(std::move(parent_ref));
+    parent_ref = nullptr;
 
-    // replace the parent expression with the operator node
-    grandparent_expression->children.back() = std::move(operator_node);
+    grandparent->children.back() = std::move(operator_node);
     operator_node = nullptr;
-    parent_expression->parent = grandparent_expression->children.back().get(); // parent expression parent is the operator node
-    parentNodes.top() = grandparent_expression->children.back().get();
+    const auto& operator_node_ref = grandparent->children.back();
+    parent->parent = operator_node_ref.get();
+    parentNodes.top() = operator_node_ref.get();
 }
 
-
+/**
+ * Handles binary operators by creating the operator node, and inserting the LHS operand
+ * which may be an already existing operand (e.g., a group coming from a parenthesis, or an operator from a nested
+ * operation).
+ * The RHS will be inserted later by the @link AST::build() @endlink loop
+ * @param curr_token the current token (which may be the LHS of the binary operation)
+ * @param parent the current parent
+ * @param parentNodes the stack of parents
+ * @note the call to @link scanner.next_token() @endlink should return a binary operator!
+ */
 void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std::stack<ASTNode*>& parentNodes) const {
     if (parent->op_type() == UNARY) { // finish the unary expression, e.g., (- 70)
         auto node = std::make_unique<ASTNode>(ASTNode{
@@ -65,30 +76,105 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
         .must_be_op_type = BINARY
     });
 
-    if (curr_token.type == RIGHT_PAREN) { // the whole parenthesis expression should be the lhs operand
-        reorder_for_operator_precedence(std::move(operator_node), parent, parentNodes);
-        return;
-    }
+    if (parent->op_type() == BINARY) {
+        if (parent->token.op_priority() >= operator_node->token.op_priority()) {
+            // complete the binary expression
+            if (parent->children.size() < 2) {
+                // due to how we parse unary operators (in the build() loop),
+                // the current operator may already be an RHS of a binary operator, and thus,
+                // the expression may already be complete. Especially when operands are (- 70)
+                // if not, then simply construct and add the RHS
+                auto rhs_node = std::make_unique<ASTNode>(ASTNode{
+                    .token = curr_token,
+                    .parent = parent
+                });
+                parent->children.push_back(std::move(rhs_node));
+            }
 
-    if (parent->op_type() == BINARY && parent->token.op_priority() >= operator_node->token.op_priority()) {
-        auto rhs_node = std::make_unique<ASTNode>(ASTNode{
+            // parent should be a leaf of the current operator, as this implies it (the parent) will be computed first, i.e., it has higher priority
+            // e.g. (? means it should have a value but there is none, yet)
+            //         g                g
+            //        /                /
+            //       *                +
+            //      / \    ->        / \
+            //     a   ?            *   ?
+            //                     / \
+            //                    a   b
+            // for the expression a * b + c (c = ?, will be added later). g = grandparent
+            // this is needed to 1) preserve operator priority/precedence and 2) preserve left-to-right precedence
+
+            replace_parent_and_make_it_child(parent, std::move(operator_node), parentNodes);
+            parent = parentNodes.top();
+            ASTNode* grandparent;
+            while ((grandparent = parent->parent) != nullptr
+                && grandparent->op_type() == BINARY
+                && grandparent->token.op_priority() >= parent->token.op_priority()) {
+                //         gg                gg
+                //        /                /
+                //       +(g)             +(p)
+                //      /  \     ->      /   \
+                //     a   +(p)         +(g)  ?
+                //        /  \          /  \
+                //       *    ?        a    *
+                //      / \                / \
+                //     b   c              b   c
+                // for the expression a + b * c + d
+                auto gg = grandparent->parent;
+
+                // modify grandparent
+                auto parent_value = std::move(grandparent->children.back());
+                grandparent->children.back() = std::move(parent_value->children.back());
+                grandparent->parent = parent_value->parent;
+
+                // modify parent
+                parent_value->children.back() = std::move(gg->children.back());
+                parent_value->parent = gg;
+
+                // modify grand-grandparent
+                gg->children.back() = std::move(parent_value);
+            }
+
+            return;
+        }
+
+        // parent has less priority => it should go up, new operator should go bottom so that it can be computed first
+        //  => parent should have as child the new operator
+
+        // complete the binary expression
+        // e.g. (? means it should have a value but there is none, yet)
+        //         g                g
+        //        /                /
+        //       +                +
+        //      / \    ->        / \
+        //     a   ?            a   *
+        //                         / \
+        //                        b   ?
+        // for the expression a + b * c (c = ?, will be added later). g = grandparent
+        auto lhs_operand_node = std::make_unique<ASTNode>(ASTNode{
             .token = curr_token,
-            .parent = parent
+            .parent = operator_node.get()
         });
-        if (parent->children.size() < 2)
-            parent->children.push_back(std::move(rhs_node));
-            // due to how we parse unary operators (in the build() loop),
-            // the current operator may already be an RHS of a binary operator, and thus,
-            // the expression may already be complete. Especially when operands are (- 70)
-
-        // e.g. a * b - c, where parent = (* a b), operator_node = -
-        // in this case we should do operator_node = (- (* a b) <should be c>)
-        // reorder is needed otherwise it'll end up as (* a (- b c))
-        reorder_for_operator_precedence(std::move(operator_node), parent, parentNodes);
+        operator_node->children.push_back(std::move(lhs_operand_node));
+        operator_node->parent = parent;
+        parent->children.push_back(std::move(operator_node));
+        parentNodes.top() = parent->children.back().get();
         return;
     }
 
-    // not a parenthesis or binary expression, may be a literal or a number
+    if (curr_token.type == RIGHT_PAREN) { // the whole parenthesis expression should be the lhs operand
+        // parent should be a leaf of the current operator
+        //         g                g
+        //        /                /
+        //       (                +
+        //     / | \    ->       / \
+        //    children          (   ?
+        //                    / | \
+        //                   children
+        replace_parent_and_make_it_child(parent, std::move(operator_node), parentNodes);
+        return;
+    }
+
+    // not a parenthesis, binary or unary expression, may be a literal or a number
     auto lhs_operand_node = std::make_unique<ASTNode>(ASTNode{
         .token = curr_token,
         .parent = operator_node.get()
