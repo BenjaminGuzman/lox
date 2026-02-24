@@ -10,6 +10,8 @@ namespace lox {
 Scanner::Scanner(const std::string& filepath): filepath(filepath), filestream(filepath) {
     if (!filestream.is_open())
         throw std::runtime_error("Couldn't open file " + filepath + " to read from it. " + strerror(errno));
+    tokens.push_back({}); // add the previous token
+    tokens.push_back(_next_token()); // add the next token
 }
 Scanner::~Scanner() {
     filestream.close();
@@ -223,14 +225,20 @@ Token Scanner::_next_token() {
 }
 
 Token Scanner::next_token() {
-    return _next_token();
+    auto& next_token = tokens.back();
+    tokens.pop_front(); // pop the previous token
+    tokens.push_back(_next_token()); // add the next (actually the next-next token) token
+    return next_token;
 }
 
-Token Scanner::peek_next() {
-    auto curr_get_pos = filestream.tellg();
-    auto token = _next_token();
-    filestream.seekg(curr_get_pos);
+Token Scanner::peek_next() const {
+    auto& token = tokens.back();
     return token;
+}
+
+Token Scanner::peek_previous() const {
+    auto& next_token = tokens.front();
+    return next_token;
 }
 
 double RealNumber::to_double() const {

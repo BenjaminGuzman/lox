@@ -197,6 +197,18 @@ public:
      */
     const size_t col{};
 
+    BasicToken& operator=(const BasicToken& other) {
+        if (this == &other)
+            return *this;
+
+        const_cast<TokenType&>(type) = other.type;
+        const_cast<std::string&>(lexeme) = other.lexeme;
+        const_cast<T&>(literal) = other.literal;
+        const_cast<size_t&>(line) = other.line;
+        const_cast<size_t&>(col) = other.col;
+        return *this;
+    }
+
     [[nodiscard]] std::string string(const std::string& filepath) const;
     [[nodiscard]] T get_literal() const;
 
@@ -298,6 +310,11 @@ private:
      */
     size_t line = 1;
 
+    /**
+     * Stores the previous (0), current (1), and next (2) tokens
+     */
+    std::list<Token> tokens = {};
+
     [[nodiscard]] Token _next_token();
 public:
     const std::string& filepath;
@@ -307,16 +324,25 @@ public:
 
     /**
      * Scans the next token of the file
+     * @note this will advance the file iterator
      * @return the next token of the file
      */
     [[nodiscard]] Token next_token();
 
     /**
-     * Scans the next token of the file without moving the pointer so that the next call to @link next_token() @endlink
-     * shall return the same token.
+     * Returns the next token of the file without moving the pointer/iterator so that the next call to
+     * @link next_token() @endlink shall return the same token.
      * @return the next token of the file.
      */
-    [[nodiscard]] Token peek_next();
+    [[nodiscard]] Token peek_next() const;
+
+    /**
+     * Returns the previous token returned by the last call to @link next_token() @endlink
+     * If no call to @link next_token() @endlink has been made, you shall ignore the output of this function
+     * (or better yet, don't call it)
+     * @return the previous token
+     */
+    [[nodiscard]] Token peek_previous() const;
 };
 
 template<typename T>
