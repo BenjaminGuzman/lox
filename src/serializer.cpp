@@ -1,4 +1,4 @@
-#include "serializer.h"
+#include "../include/serializer.h"
 
 #include <iostream>
 #include <numeric>
@@ -66,23 +66,15 @@ void add_to_buff(const ASTNode* node, std::stringstream& buff) {
     default: {}
     }
 
-    bool should_use_lexeme = false;
-    std::string serialization = std::visit([&should_use_lexeme]<typename E>(E&& lit) {
+    // serialize the token's literal (or the token itself)
+    std::visit([&buff, &node]<typename E>(E&& lit) {
         if constexpr (std::is_same_v<std::decay_t<E>, std::string>)
-            return lit;
+            buff << StringTokenView(node->token).literal();
         if constexpr (std::is_same_v<std::decay_t<E>, RealNumber>)
-            return to_string(lit);
-        if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>) {
-            should_use_lexeme = true;
-            return std::string("");
-        }
-        return std::string("");
+            buff << to_string(lit);
+        if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>) // serialize the token itself
+            buff << node->token.lexeme;
     }, node->token.get_literal());
-
-    if (should_use_lexeme)
-        serialization = node->token.lexeme;
-
-    buff << serialization;
 }
 
 /**

@@ -1,27 +1,10 @@
-#ifndef CODECRAFTERS_INTERPRETER_SCANNER_H
-#define CODECRAFTERS_INTERPRETER_SCANNER_H
-#include <cmath>
-#include <fstream>
-#include <functional>
-#include <iostream>
+#ifndef CODECRAFTERS_INTERPRETER_TOKEN_H
+#define CODECRAFTERS_INTERPRETER_TOKEN_H
 #include <string>
 #include <unordered_map>
 #include <variant>
-#include <vector>
-#include <list>
 
-inline bool PRETTY_PRINT = false;
-
-namespace lox {
-struct RealNumber {
-    unsigned long long integer{};
-    unsigned long long fractional{};
-    int n_fractional_digits{};
-    bool is_negative = false;
-    [[nodiscard]] double to_double() const;
-};
-std::string to_string(const RealNumber& number);
-std::string to_string(const RealNumber* type);
+#include "real_number.h"
 
 // the actual memory used for a variable will be the biggest type here...
 // so it's not very efficient, but way more efficient than storing as unique_ptr, or void*, or something else...
@@ -172,10 +155,14 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
     {AST_ROOT, NOT_OPERATOR},
 };
 
+/**
+ * Generic class that stores a token
+ * @tparam T the type of the literal value
+ */
 template<typename T>
 class BasicToken {
 public:
-    const TokenType type;
+    const TokenType type = UNRECOGNIZED;
 
     /**
      * Lexeme. Actual sequence of chars that form the token. May be null iff type = EOF
@@ -197,20 +184,8 @@ public:
      */
     const size_t col{};
 
-    BasicToken& operator=(const BasicToken& other) {
-        if (this == &other)
-            return *this;
-
-        const_cast<TokenType&>(type) = other.type;
-        const_cast<std::string&>(lexeme) = other.lexeme;
-        const_cast<T&>(literal) = other.literal;
-        const_cast<size_t&>(line) = other.line;
-        const_cast<size_t&>(col) = other.col;
-        return *this;
-    }
-
     [[nodiscard]] std::string string(const std::string& filepath) const;
-    [[nodiscard]] T get_literal() const;
+    [[nodiscard]] const T& get_literal() const;
 
     /**
      * @return the operator type of the token as in @link TokenOpType @endlink
@@ -241,115 +216,8 @@ public:
 
 using Token = BasicToken<underlying_t>;
 
-/**
- * A lightweight, non-owning view of a Token's data.
- * This provides direct, typed access to a token's literal without copying any data.
- */
 template<typename T>
-struct BasicTokenView {
-    const TokenType type;
-    const std::string& lexeme;
-    const T& literal;
-    const size_t line;
-    const size_t col;
-
-    /**
-     * Creates a view from an existing Token.
-     * @param token the token
-     * @throws std::bad_variant_access if the token's literal is not of type T.
-     */
-    explicit BasicTokenView(const Token& token) :
-        type(token.type),
-        lexeme(token.lexeme),
-        literal(std::get<T>(token.get_literal())),
-        line(token.line),
-        col(token.col) {}
-};
-
-template<typename T>
-using parsingFunctionT = std::function<T(std::ifstream& filestream, const size_t line, const size_t col)>;
-
-/**
- * Parses a string token in the next characters provided by the filestream
- * @param filestream the filestream. First call to @link std::get(char) @endlink should return the first character that
- * is said to be part of the string, i.e., this index shouldn't point to '"' unless the string is empty.
- * At the return of this function, the next call to @link std::get(char) @endlink on this filestream
- * should return the next char that is not part of the string.
- * @param line line at which the string starts (used only to store it in the returned token)
- * @param col col at which the string starts (used only to store it in the returned token)
- * @return the token which can be of type @link TokenType::STRING @endlink
- * or @link TokenType::UNTERMINATED_STRING @endlink.
- */
-Token parseString(std::ifstream& filestream, const size_t line, const size_t col);
-
-/**
- * Parses a number token in the next characters provided by the filestream
- * @param filestream the filestream. First call to @link std::get(char) @endlink should return the first character that
- * is said to be part of the number
- * @param line line at which the number starts (used just to store it in the returned token)
- * @param col col at which the number starts (used just to store it in the returned token)
- * @return the token which can be of type @link TokenType::NUMBER @endlink
- */
-Token parseNumber(std::ifstream& filestream, const size_t line, const size_t col);
-
-/**
- * Scans tokens.
- * This is a forward-only scanner.
- */
-class Scanner {
-private:
-    std::ifstream filestream;
-
-    /**
-     * Column at which this scanner currently is
-     */
-    size_t col = 1;
-
-    /**
-     * Line at which this scanner currently is
-     */
-    size_t line = 1;
-
-    /**
-     * Stores the previous (0), current (1), and next (2) tokens
-     */
-    std::list<Token> tokens = {};
-
-    [[nodiscard]] Token _next_token();
-public:
-    const std::string& filepath;
-
-    explicit Scanner(const std::string& filepath);
-    ~Scanner();
-
-    /**
-     * Scans the next token of the file
-     * @note this will advance the file iterator
-     * @return the next token of the file
-     */
-    [[nodiscard]] Token next_token();
-
-    /**
-     * Returns the next token of the file without moving the pointer/iterator so that the next call to
-     * @link next_token() @endlink shall return the same token.
-     * @return the next token of the file.
-     */
-    [[nodiscard]] Token peek_next() const;
-
-    /**
-     * Returns the previous token returned by the last call to @link next_token() @endlink
-     * If no call to @link next_token() @endlink has been made, you shall ignore the output of this function
-     * (or better yet, don't call it)
-     * @return the previous token
-     */
-    [[nodiscard]] Token peek_previous() const;
-};
-
-template<typename T>
-T BasicToken<T>::get_literal() const {
-    if (type == STRING)
-        return lexeme.substr(1, lexeme.length() - 2);
-
+const T& BasicToken<T>::get_literal() const {
     return literal;
 }
 
@@ -390,6 +258,7 @@ bool BasicToken<T>::can_be_comparison_operand() const {
     case NUMBER:
     case STRING:
     case IDENTIFIER:
+    case LEFT_PAREN:
     case RIGHT_PAREN: // a group can be an operand, e.g. (10 + 9) < 9
         return true;
     default:
@@ -428,29 +297,84 @@ uint16_t BasicToken<T>::op_priority() const {
     }
 }
 
+/**
+ * A lightweight, non-owning view of a Token's data.
+ * This provides direct, typed access to a token's literal without copying any data.
+ * @tparam T the type of the token's literal
+ * @tparam E the type of the "view" of the token's literal (e.g., std::string_view for a string literal)
+ */
+template<typename T, typename E = const T*>
+class BasicTokenView {
+private:
+    // if it's a string, this class should own the string view (which doesn't own the string)
+    //   i.e., E = std::string_view: this ->(owns) string_view ->(points to) string
+    // but if it's not, then this class just owns a reference to the underlying type
+    //   i.e., E = const T*: this ->(points to) literal
+    E _literal;
+public:
+    const Token& token;
+
+    /**
+     * Creates a view from an existing Token.
+     * @param token the token
+     * @throws std::bad_variant_access if the token's literal is not of type T.
+     */
+    explicit BasicTokenView(const Token& token);
+
+    /**
+     *
+     * @return the literal as a reference, i.e. @code const T& @endcode, or as a view object, e.g., @code std::string_view @endcode
+     */
+    [[nodiscard]] auto literal() const;
+};
+
+template<typename T, typename E>
+BasicTokenView<T, E>::BasicTokenView(const Token &token) : token(token) {
+    if constexpr (std::is_same_v<T, std::string>) {
+        // in order to save space, literal="" iff lexeme = "literal", i.e., the literal can be computed from the lexeme
+        if (std::get<std::string>(token.get_literal()).empty())
+            _literal = std::string_view(token.lexeme).substr(1, token.lexeme.length() - 2);
+        else // literal actually contains the literal
+            _literal = std::string_view(std::get<std::string>(token.literal));
+    } else
+        _literal = &std::get<T>(token.get_literal());
+}
+
+template<typename T, typename E>
+auto BasicTokenView<T, E>::literal() const {
+    if constexpr (std::is_pointer_v<E>)
+        // E = const T*, thus we shall return const E&, i.e., the dereferenced pointer
+        return *_literal;
+    else
+        // E = std::string_view, thus we shall return E.
+        return _literal;
+}
+
+using StringTokenView = BasicTokenView<std::string, std::string_view>;
+using RealNumberTokenView = BasicTokenView<RealNumber>;
+
 template<typename T>
 std::string BasicToken<T>::string(const std::string& filepath) const {
-    std::string literal_value = std::visit([]<typename E>(E&& lit) {
-            if constexpr (std::is_same_v<std::decay_t<E>, std::string>)
-                return lit.empty() ? "null" : lit;
-            if constexpr (std::is_same_v<std::decay_t<E>, RealNumber>)
-                return to_string(lit);
-            if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>)
-                return std::string("null");
-            return std::string("");
-        }, get_literal());
+    std::ostringstream basic_serialized_token_buff;
+    basic_serialized_token_buff << to_string(type) << " " << lexeme << " ";
+    std::visit([&basic_serialized_token_buff, this]<typename E>(E&& lit) {
+        if constexpr (std::is_same_v<std::decay_t<E>, std::string>)
+             basic_serialized_token_buff << StringTokenView(*this).literal();
+        if constexpr (std::is_same_v<std::decay_t<E>, RealNumber>)
+            basic_serialized_token_buff << to_string(lit);
+        if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>)
+            basic_serialized_token_buff << "null";
+    }, get_literal());
 
-    std::string basic_serialized_token = to_string(type) + " " + lexeme + " " + literal_value;
+#ifdef TOKEN_PRETTY_PRINT
+    if (type == UNRECOGNIZED)
+        return "[" + filepath + ":" + std::to_string(line) + ":" + std::to_string(col) + "]: Error! Unexpected character: " + lexeme;
 
-    if (PRETTY_PRINT) {
-        if (type == UNRECOGNIZED)
-            return "[" + filepath + ":" + std::to_string(line) + ":" + std::to_string(col) + "]: Error! Unexpected character: " + lexeme;
+    if (type == UNTERMINATED_STRING)
+        return "[" + filepath + ":" + std::to_string(line) + ":" + std::to_string(col) + "]: Error! Unterminated string: " + std::get<std::string>(literal);
 
-        if (type == UNTERMINATED_STRING)
-            return "[" + filepath + ":" + std::to_string(line) + ":" + std::to_string(col) + "]: Error! Unterminated string: " + std::get<std::string>(literal);
-
-        return basic_serialized_token +  " " + filepath + ":" + std::to_string(line) + ":" + std::to_string(col);
-    }
+    return basic_serialized_token_buff.str() +  " " + filepath + ":" + std::to_string(line) + ":" + std::to_string(col);
+#endif
 
     if (type == UNRECOGNIZED)
         return "[line " + std::to_string(line) + "] Error: Unexpected character: " + lexeme;
@@ -458,7 +382,58 @@ std::string BasicToken<T>::string(const std::string& filepath) const {
     if (type == UNTERMINATED_STRING)
         return "[line " + std::to_string(line) + "] Error: Unterminated string.";
 
-    return basic_serialized_token;
+    return basic_serialized_token_buff.str();
 }
+
+inline std::unordered_map<TokenType, std::string> tokenTypeStrings = {
+    {LEFT_PAREN, "LEFT_PAREN"},
+    {RIGHT_PAREN, "RIGHT_PAREN"},
+    {EOF_TOKEN, "EOF"},
+    {LEFT_BRACE, "LEFT_BRACE"},
+    {RIGHT_BRACE, "RIGHT_BRACE"},
+    {COMMA, "COMMA"},
+    {DOT, "DOT"},
+    {MINUS, "MINUS"},
+    {PLUS, "PLUS"},
+    {SEMICOLON, "SEMICOLON"},
+    {SLASH, "SLASH"},
+    {STAR, "STAR"},
+    {EQ, "EQUAL"},
+    {EQEQ, "EQUAL_EQUAL"},
+    {NOT, "BANG"},
+    {NEQ, "BANG_EQUAL"},
+    {LT, "LESS"},
+    {LTE, "LESS_EQUAL"},
+    {GT, "GREATER"},
+    {GTE, "GREATER_EQUAL"},
+    {STRING, "STRING"},
+    {NUMBER, "NUMBER"},
+    {IDENTIFIER, "IDENTIFIER"},
+
+    // keywords
+    {AND, "AND"},
+    {OR, "OR"},
+    {CLASS, "CLASS"},
+    {IF, "IF"},
+    {ELSE, "ELSE"},
+    {TRUE, "TRUE"},
+    {FALSE, "FALSE"},
+    {FOR, "FOR"},
+    {WHILE, "WHILE"},
+    {FUN, "FUN"},
+    {RETURN, "RETURN"},
+    {SUPER, "SUPER"},
+    {THIS, "THIS"},
+    {VAR, "VAR"},
+    {NIL, "NIL"},
+    {PRINT, "PRINT"},
+};
+
+inline std::string to_string(const TokenType& type) {
+    if (tokenTypeStrings.contains(type))
+        return tokenTypeStrings[type];
+
+    return "UNKNOWN";
 }
-#endif //CODECRAFTERS_INTERPRETER_SCANNER_H
+
+#endif //CODECRAFTERS_INTERPRETER_TOKEN_H

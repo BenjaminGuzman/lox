@@ -5,9 +5,9 @@
 #include <string>
 #include <filesystem>
 
-#include "parser.h"
-#include "scanner.h"
-#include "serializer.h"
+#include "../include/parser.h"
+#include "../include/scanner.h"
+#include "../include/serializer.h"
 
 int main(int argc, char *argv[]) {
     // Disable output buffering

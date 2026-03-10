@@ -1,4 +1,4 @@
-#include "scanner.h"
+#include "../include/scanner.h"
 
 #include <fstream>
 #include <sstream>
@@ -7,48 +7,86 @@
 #include <functional>
 
 namespace lox {
-Scanner::Scanner(const std::string& filepath): filepath(filepath), filestream(filepath) {
-    if (!filestream.is_open())
-        throw std::runtime_error("Couldn't open file " + filepath + " to read from it. " + strerror(errno));
-    tokens.push_back({}); // add the previous token
-    tokens.push_back(_next_token()); // add the next token
-}
-Scanner::~Scanner() {
-    filestream.close();
-}
-
-Token parseString(std::ifstream& filestream, const size_t line, const size_t col) {
-    std::stringstream buff;
-    char c;
-    while (filestream.get(c)) {
-        // TODO add escape sequences??
-        if (c == '"') {
-            auto s = buff.str();
-            return Token{STRING, '"' + s + '"', "", line, col};
-        } else if (c == '\n') { // no multi-line strings supported now
-            auto s = buff.str();
-            filestream.putback(c); // the '\n' is not part of the string, so we need to put it back
-            return Token{UNTERMINATED_STRING, "UNTERMINATED STRING", s, line, col};
-        }
-
-        buff << c;
+Scanner::Scanner(const std::string& filepath, bool is_filepath): filepath(filepath), stream({}) {
+    if (is_filepath) {
+        filestream.open(filepath);
+        stream.rdbuf(filestream.rdbuf());
+    } else {
+        stringstream.str(filepath); // filepath is not actually a filepath but the string to be scanned
+        stream.rdbuf(stringstream.rdbuf());
     }
 
-    return Token{UNTERMINATED_STRING, "UNTERMINATED STRING", buff.str(), line, col};
+    if (!stream.good())
+        throw std::runtime_error("Couldn't open \"" + filepath + "\" to read from it. " + strerror(errno));
+
+    tokens.push_back({}); // add the previous token
+    tokens.push_back({}); // add the current token
+    tokens.push_back(_next_token()); // add the next token
+}
+Scanner::~Scanner() = default;
+
+Token parse_string(std::istream& stream, const size_t line, const size_t col) {
+    std::stringstream lexeme_buff;
+    lexeme_buff << '"';
+    std::stringstream literal_buff;
+    char c;
+    while (stream.get(c)) {
+        lexeme_buff << c;
+        if (c == '\\') { // add support for escape sequences
+            if (!stream.get(c)) // string ended at \, e.g. "hello bad string\"
+                return Token{UNTERMINATED_STRING, lexeme_buff.str(), literal_buff.str(), line, col};
+
+            lexeme_buff << c;
+            switch (c) {
+            case '"':
+                literal_buff << '"';
+                break;
+            case 't':
+                literal_buff << '\t';
+                break;
+            case 'n':
+                literal_buff << '\n';
+                break;
+            default:
+                // add the unrecognized escape sequence as-is
+                literal_buff << '\\' << c;
+            }
+            continue;
+        }
+
+        if (c == '"') {
+            const auto& lexeme = lexeme_buff.str();
+            const auto& literal_ = literal_buff.str();
+
+            // if lexeme = "literal", then the literal can be computed from the lexeme by removing the quotes,
+            // so, in order to save space store only an empty string
+            const auto& literal = lexeme.size() == literal_.size() + 2 ? "" : literal_;
+            return Token{STRING, lexeme_buff.str(), literal, line, col};
+        }
+        if (c == '\n') { // no multi-line strings supported now
+            const auto& s = literal_buff.str();
+            stream.putback(c); // the '\n' is not part of the string, so we need to put it back
+            return Token{UNTERMINATED_STRING, lexeme_buff.str(), s, line, col};
+        }
+
+        literal_buff << c;
+    }
+
+    return Token{UNTERMINATED_STRING, literal_buff.str(), literal_buff.str(), line, col};
 }
 
-Token parseNumber(std::ifstream& filestream, const size_t line, const size_t col) {
+Token parse_number(std::istream& stream, const size_t line, const size_t col) {
     std::stringstream buff;
 
     // parse integer
     unsigned long long integer = 0;
     char c;
-    while (filestream.get(c)) {
+    while (stream.get(c)) {
         if (std::isdigit(c)) {
             buff << c;
             integer = integer * 10 + (c - '0');
         } else {
-            filestream.putback(c);
+            stream.putback(c);
             break;
         }
     }
@@ -56,16 +94,16 @@ Token parseNumber(std::ifstream& filestream, const size_t line, const size_t col
     // parse fractional (if any)
     unsigned long long fractional = 0;
     int fractional_digits = 0;
-    if (filestream.peek() == '.') {
-        filestream.get(c);
+    if (stream.peek() == '.') {
+        stream.get(c);
         buff << c;
-        while (filestream.get(c)) {
+        while (stream.get(c)) {
             if (std::isdigit(c)) {
                 buff << c;
                 fractional = fractional * 10 + (c - '0');
                 ++fractional_digits;
             } else {
-                filestream.putback(c);
+                stream.putback(c);
                 break;
             }
         }
@@ -98,10 +136,10 @@ Token parseNumber(std::ifstream& filestream, const size_t line, const size_t col
 }
 
 Token Scanner::_next_token() {
-    if (!filestream.is_open())
+    if (stream.eof())
         return Token{EOF_TOKEN, "", std::monostate{}, line, col};
 
-    for (char c; filestream.get(c); ++col /* this is needed here! only after scanning a char, the col increments */) {
+    for (char c; stream.get(c); ++col /* this is needed here! only after scanning a char, the col increments */) {
         switch (c) {
         // non-composite or especial chars
         case '(':
@@ -123,8 +161,8 @@ Token Scanner::_next_token() {
         case '>':
         case '<': {
             auto lexeme = std::string(1, c);
-            if (filestream.peek() == '=') { // process the current char + '=' (<=, ==, ...)
-                filestream.get();
+            if (stream.peek() == '=') { // process the current char + '=' (<=, ==, ...)
+                stream.get();
                 lexeme += "=";
                 auto token = Token{TOKEN_STRING_MAPPING.at(lexeme), lexeme, std::monostate{}, line, col};
                 ++col;
@@ -137,9 +175,9 @@ Token Scanner::_next_token() {
             col = 0;
             break;
         case '/':
-            if (filestream.peek() == '/') { // process the // (comment)
+            if (stream.peek() == '/') { // process the // (comment)
                 char c2;
-                while (filestream.get(c2) && c2 != '\n') {} // ignore everything until the next line
+                while (stream.get(c2) && c2 != '\n') {} // ignore everything until the next line
 
                 // next line or EOF was reached
                 ++line;
@@ -147,11 +185,12 @@ Token Scanner::_next_token() {
             } else
                 return Token{SLASH, "/", std::monostate{}, line, col};
             break;
+        case '\r':
         case ' ':
         case '\t':
             break;
         case '"': { // parse strings
-            Token stringToken = parseString(filestream, line, col);
+            Token stringToken = parse_string(stream, line, col);
 
             // col should point to the last char of the string, regardless of it is terminated or not
             // if string is terminated, col = |'"'| - 1 + |"the lexeme"| = |"the lexeme"| = last '"'
@@ -170,9 +209,9 @@ Token Scanner::_next_token() {
         case '9':
         case '0': { // parse number regardless of their sign
             // "unread" the digit. The first call to get() from parseNumber should return the first digit
-            filestream.putback(c);
+            stream.putback(c);
 
-            Token number = parseNumber(filestream, line, col);
+            Token number = parse_number(stream, line, col);
 
             // col currently points to the first char in the lexeme (first digit), so col = index_of_first_digit + 1
             // but col should point to the last char of the lexeme/digit, so we need
@@ -191,11 +230,11 @@ Token Scanner::_next_token() {
                 return Token{UNRECOGNIZED, std::string(1, c), std::monostate{}, line, col};
 
             buff << c;
-            while (filestream.get(c)) {
+            while (stream.get(c)) {
                 if (std::isalpha(c) || std::isdigit(c) || c == '_')
                     buff << c;
                 else {
-                    filestream.putback(c);
+                    stream.putback(c);
                     break;
                 }
             }
@@ -220,7 +259,8 @@ Token Scanner::_next_token() {
         }
     }
 
-    filestream.close();
+    if (filestream.is_open())
+        filestream.close();
     return Token{EOF_TOKEN, "", std::monostate{}, line, col};
 }
 
@@ -236,66 +276,12 @@ Token Scanner::peek_next() const {
     return token;
 }
 
+Token Scanner::peek_current() const {
+    return *std::next(tokens.begin(), 1);
+}
+
 Token Scanner::peek_previous() const {
     auto& next_token = tokens.front();
     return next_token;
-}
-
-double RealNumber::to_double() const {
-    return static_cast<double>(integer) + static_cast<double>(fractional) / pow(10, n_fractional_digits);
-}
-
-std::unordered_map<TokenType, std::string> tokenTypeStrings = {
-    {LEFT_PAREN, "LEFT_PAREN"},
-    {RIGHT_PAREN, "RIGHT_PAREN"},
-    {EOF_TOKEN, "EOF"},
-    {LEFT_BRACE, "LEFT_BRACE"},
-    {RIGHT_BRACE, "RIGHT_BRACE"},
-    {COMMA, "COMMA"},
-    {DOT, "DOT"},
-    {MINUS, "MINUS"},
-    {PLUS, "PLUS"},
-    {SEMICOLON, "SEMICOLON"},
-    {SLASH, "SLASH"},
-    {STAR, "STAR"},
-    {EQ, "EQUAL"},
-    {EQEQ, "EQUAL_EQUAL"},
-    {NOT, "BANG"},
-    {NEQ, "BANG_EQUAL"},
-    {LT, "LESS"},
-    {LTE, "LESS_EQUAL"},
-    {GT, "GREATER"},
-    {GTE, "GREATER_EQUAL"},
-    {STRING, "STRING"},
-    {NUMBER, "NUMBER"},
-    {IDENTIFIER, "IDENTIFIER"},
-
-    // keywords
-    {AND, "AND"},
-    {OR, "OR"},
-    {CLASS, "CLASS"},
-    {IF, "IF"},
-    {ELSE, "ELSE"},
-    {TRUE, "TRUE"},
-    {FALSE, "FALSE"},
-    {FOR, "FOR"},
-    {WHILE, "WHILE"},
-    {FUN, "FUN"},
-    {RETURN, "RETURN"},
-    {SUPER, "SUPER"},
-    {THIS, "THIS"},
-    {VAR, "VAR"},
-    {NIL, "NIL"},
-    {PRINT, "PRINT"},
-};
-std::string to_string(const TokenType& type) {
-    if (tokenTypeStrings.contains(type))
-        return tokenTypeStrings[type];
-
-    return "UNKNOWN";
-}
-
-std::string to_string(const RealNumber& number) {
-    return std::to_string(number.integer) + "." + std::to_string(number.fractional);
 }
 }
