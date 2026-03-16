@@ -36,9 +36,11 @@ int main(int argc, char *argv[]) {
         auto abs_filepath = std::filesystem::canonical(filepath);
 
         lox::Scanner scanner(abs_filepath);
-        lox::AST ast(scanner);
-        int n_errors = Serializer::serialize(ast);
-        if (n_errors > 0)
+        lox::AST ast(scanner, false);
+        int n_errors_parse = ast.build();
+        int n_errors_serialize = Serializer::serialize(ast);
+
+        if (n_errors_serialize > 0 || n_errors_parse > 0)
             return 65;
     } else {
         std::cerr << "Unknown command: " << command << std::endl;

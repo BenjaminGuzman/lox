@@ -1,6 +1,9 @@
 #include "../include/parser.h"
 
+#include <set>
 #include <stack>
+
+#include "internal/utils.h"
 
 namespace lox {
 TokenOpType ASTNode::op_type() const {
@@ -49,7 +52,7 @@ void ensure_right_associativity(const ASTNode* parent) {
 
         // modify grand-grandparent
         gg->children.back() = std::move(parent_value);
-        }
+    }
 }
 
 /**
@@ -86,7 +89,9 @@ void replace_parent_and_make_it_child(ASTNode* parent, std::unique_ptr<ASTNode> 
  * Handles binary operators by creating the operator node, and inserting the LHS operand
  * which may be an already existing operand (e.g., a group coming from a parenthesis, or an operator from a nested
  * operation).
- * The RHS will be inserted later by the @link AST::build() @endlink loop
+ * The RHS will be inserted later by the @link AST::build() @endlink loop.
+ * This is a sort of Pratt parser with the difference that it doesn't recurse, making it totally safe where recursion is
+ * prohibited.
  * @param curr_token the current token (which may be the LHS of the binary operation)
  * @param parent the current parent
  * @param parentNodes the stack of parents
@@ -197,7 +202,9 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
     parentNodes.push(parent->children.back().get());
 }
 
-void AST::build() {
+int AST::build() const {
+    int n_errors = 0;
+
     std::stack<ASTNode*> parentNodes;
     parentNodes.push(root.get());
     while (true) {
@@ -225,7 +232,8 @@ void AST::build() {
             break;
         }
         default:
-            // handle binary operators (TODO change to pratt algorithm ())
+            // This is an iterative implementation of a Pratt parser.
+            // The core logic handles operator precedence by rotating nodes in the AST.
             auto next = scanner.peek_next();
             bool valid_binary_operand = token.can_be_arithmetic_operand() || token.can_be_comparison_operand();
             bool valid_binary_operator = next.is_arithmetic_operator() || next.is_comparison_operator();
@@ -241,8 +249,21 @@ void AST::build() {
             parent->children.push_back(std::move(node));
             node = nullptr;
 
-            if (token.type == RIGHT_PAREN)
+            if (token.type == RIGHT_PAREN) {
+                if (parentNodes.top()->token.type != LEFT_PAREN) {
+                    // if we reached a ')', it should mean the current parent is '(', if it's not, then there may be a
+                    // syntax error somewhere...
+                    std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
+                            << "Premature closure of parenthesis. Check statements inside. "
+                            << "Will try my best to recover from this, but there are no guarantees I'll recover successfully" << std::endl;
+                    while (parentNodes.top()->token.type != LEFT_PAREN) {
+                        // pop all the non-parenthesis nodes to "recover" from this
+                        ++n_errors;
+                        parentNodes.pop();
+                    }
+                }
                 parentNodes.pop(); // the parent for the next node shouldn't be the current group
+            }
         }
 
         // pop from the stack all those operators whose operands have been provided
@@ -267,30 +288,25 @@ void AST::build() {
         }
     }
 
-
-
-    // TODO SYNTAX ERRORS
-    // pop from the stack all those operators whose operands have been provided
-    bool keep_poping = true;
-    while (!parentNodes.empty() && keep_poping) {
-        keep_poping = false;
-        switch (parentNodes.top()->op_type()) {
-        case UNARY: // operand has just been added in lines above
-            if (parentNodes.top()->children.size() == 1) {
-                parentNodes.pop(); // operand has been provided
-                keep_poping = true;
-            } else
-                // syntax error
-            break;
-        case BINARY:
-            if (parentNodes.top()->children.size() == 2) {
-                parentNodes.pop(); // both operands have been provided
-                keep_poping = true;
-            } else
-                // syntax error
-            break;
-        default:{};
+    // at the end, the parentNodes should only contain the root node, if it contains any other elements, then
+    // those elements are "incomplete" and are syntax errors
+    while (!parentNodes.empty() && parentNodes.top()->token.type != AST_ROOT) {
+        const auto incomplete = parentNodes.top();
+        parentNodes.pop();
+        std::string message;
+        if (incomplete->token.type == LEFT_PAREN) {
+            message = "Error: Unclosed parenthesis '(' at line " + std::to_string(incomplete->token.line) + ".";
+        } else if (incomplete->op_type() == BINARY && incomplete->children.size() < 2) {
+            message = "Error: Operator '" + incomplete->token.lexeme + "' is missing its right-hand side operand.";
+        } else if (incomplete->op_type() == UNARY && incomplete->children.empty()) {
+            message = "Error: Operator '" + incomplete->token.lexeme + "' is missing its operand.";
+        } else {
+            message = "Error: Incomplete expression near '" + incomplete->token.lexeme + "'.";
         }
+        std::cerr << error_in_file_prefix(scanner.filepath, incomplete->token.line, incomplete->token.col) << message << std::endl;
+        ++n_errors;
     }
+
+    return n_errors;
 }
 }

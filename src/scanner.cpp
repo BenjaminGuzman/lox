@@ -137,9 +137,10 @@ Token parse_number(std::istream& stream, const size_t line, const size_t col) {
 
 Token Scanner::_next_token() {
     if (stream.eof())
-        return Token{EOF_TOKEN, "", std::monostate{}, line, col};
+        return Token{EOF_TOKEN, "", std::monostate{}, line, col + 1};
 
-    for (char c; stream.get(c); ++col /* this is needed here! only after scanning a char, the col increments */) {
+    for (char c; stream.get(c);) {
+        ++col; /* this is needed here! only after scanning a char, the col increments */
         switch (c) {
         // non-composite or especial chars
         case '(':
@@ -195,7 +196,7 @@ Token Scanner::_next_token() {
             // col should point to the last char of the string, regardless of it is terminated or not
             // if string is terminated, col = |'"'| - 1 + |"the lexeme"| = |"the lexeme"| = last '"'
             // if string is not terminated, col = |'"'| - 1 + |"the lexeme| = |"the lexeme| = last 'e'
-            col = -1 /*(remove the initial '"')*/ + stringToken.lexeme.length();
+            col += -1 /*(remove the initial '"')*/ + stringToken.lexeme.length();
             return stringToken;
         }
         case '1':
@@ -241,6 +242,7 @@ Token Scanner::_next_token() {
 
             std::string lexeme = buff.str();
 
+            size_t token_col = col;
             // col currently points to the first char in the lexeme, so col = index_of_first_char + 1
             // but col should point to the last char of the lexeme, so we need
             // col = col + |lexeme| - 1 = index_of_first_char + 1 + |lexeme| - 1 = index_of_first_char + |lexeme|
@@ -253,15 +255,15 @@ Token Scanner::_next_token() {
 
             if (TOKEN_STRING_MAPPING.contains(lexeme)) // if it is a keyword
                 // TODO will adding the lexeme occupy more memory? I mean, will we have 2+ copies of "while"?
-                return Token{TOKEN_STRING_MAPPING.at(lexeme), lexeme, std::monostate{}, line, col};
+                return Token{TOKEN_STRING_MAPPING.at(lexeme), lexeme, std::monostate{}, line, token_col};
 
-            return Token{IDENTIFIER, lexeme, std::monostate{}, line, col};
+            return Token{IDENTIFIER, lexeme, std::monostate{}, line, token_col};
         }
     }
 
     if (filestream.is_open())
         filestream.close();
-    return Token{EOF_TOKEN, "", std::monostate{}, line, col};
+    return Token{EOF_TOKEN, "", std::monostate{}, line, col + 1};
 }
 
 Token Scanner::next_token() {

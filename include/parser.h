@@ -33,7 +33,11 @@ public:
     std::unique_ptr<ASTNode> root;
     AST(Scanner& scanner, bool autobuild = true);
 
-    void build();
+    /**
+     * Builds the tree using the provided scanner
+     * @return number of errors
+     */
+    [[nodiscard]] int build() const;
 };
 
 }

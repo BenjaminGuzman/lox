@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "scanner.h"
+#include <tuple>
 
 namespace lox {
 
@@ -62,6 +63,29 @@ TEST(ScannerTest, TracksLineNumbers) {
     Scanner scanner("\n\n\n", false);
     Token token = scanner.next_token();
     EXPECT_EQ(token.type, EOF_TOKEN) << "Expected EOF token, received " << to_string(token.type);
+}
+
+TEST(ScannerTest, TracksColumnNumbers) {
+    Scanner scanner("var a = 10;\n\"hello\"  world", false);
+    std::vector<std::tuple<TokenType, size_t, size_t>> expected_tokens = {
+        // line 1
+        {VAR, 1, 1},
+        {IDENTIFIER, 1, 5},
+        {EQ, 1, 7},
+        {NUMBER, 1, 9},
+        {SEMICOLON, 1, 11},
+        // line 2
+        {STRING, 2, 1},
+        {IDENTIFIER, 2, 10},
+        {EOF_TOKEN, 2, 15}
+    };
+
+    for (const auto& expected : expected_tokens) {
+        Token token = scanner.next_token();
+        EXPECT_EQ(token.type, std::get<0>(expected)) << "Expected " << to_string(std::get<0>(expected)) << ", received " << to_string(token.type);
+        EXPECT_EQ(token.line, std::get<1>(expected)) << "For token " << to_string(token.type) << ", expected line " << std::get<1>(expected) << ", received " << token.line;
+        EXPECT_EQ(token.col, std::get<2>(expected)) << "For token " << to_string(token.type) << ", expected col " << std::get<2>(expected) << ", received " << token.col;
+    }
 }
 
 TEST(ScannerTest, ScansStringLiterals) {

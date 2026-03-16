@@ -56,7 +56,7 @@ private:
     /**
      * Column at which this scanner currently is
      */
-    size_t col = 1;
+    size_t col = 0;
 
     /**
      * Line at which this scanner currently is
