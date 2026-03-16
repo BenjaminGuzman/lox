@@ -3,6 +3,7 @@
 #include <set>
 #include <stack>
 
+#include "serializer.h"
 #include "internal/utils.h"
 
 namespace lox {
@@ -231,6 +232,13 @@ int AST::build() const {
             parentNodes.push(parent->children.back().get());
             break;
         }
+        // these shouldn't go to the AST
+        case UNTERMINATED_STRING:
+        case UNRECOGNIZED:
+        case INVALID_NUMBER:
+            std::cerr << token.string(scanner.filepath) << std::endl;
+            ++n_errors;
+            break;
         default:
             // This is an iterative implementation of a Pratt parser.
             // The core logic handles operator precedence by rotating nodes in the AST.
@@ -249,7 +257,8 @@ int AST::build() const {
             parent->children.push_back(std::move(node));
             node = nullptr;
 
-            if (token.type == RIGHT_PAREN) {
+            switch (token.type) {
+            case RIGHT_PAREN: // indicates the '(' (which should be the current parent) has been closed
                 if (parentNodes.top()->token.type != LEFT_PAREN) {
                     // if we reached a ')', it should mean the current parent is '(', if it's not, then there may be a
                     // syntax error somewhere...
@@ -263,6 +272,8 @@ int AST::build() const {
                     }
                 }
                 parentNodes.pop(); // the parent for the next node shouldn't be the current group
+                break;
+            default: break;
             }
         }
 
@@ -294,15 +305,14 @@ int AST::build() const {
         const auto incomplete = parentNodes.top();
         parentNodes.pop();
         std::string message;
-        if (incomplete->token.type == LEFT_PAREN) {
-            message = "Error: Unclosed parenthesis '(' at line " + std::to_string(incomplete->token.line) + ".";
-        } else if (incomplete->op_type() == BINARY && incomplete->children.size() < 2) {
-            message = "Error: Operator '" + incomplete->token.lexeme + "' is missing its right-hand side operand.";
-        } else if (incomplete->op_type() == UNARY && incomplete->children.empty()) {
-            message = "Error: Operator '" + incomplete->token.lexeme + "' is missing its operand.";
-        } else {
-            message = "Error: Incomplete expression near '" + incomplete->token.lexeme + "'.";
-        }
+        if (incomplete->token.type == LEFT_PAREN)
+            message = "Unclosed parenthesis '('";
+        else if (incomplete->op_type() == BINARY && incomplete->children.size() < 2)
+            message = "Operator '" + incomplete->token.lexeme + "' is missing its right-hand side operand";
+        else if (incomplete->op_type() == UNARY && incomplete->children.empty())
+            message = "Operator '" + incomplete->token.lexeme + "' is missing its operand";
+        else
+            message = "Incomplete expression near '" + incomplete->token.lexeme + "'";
         std::cerr << error_in_file_prefix(scanner.filepath, incomplete->token.line, incomplete->token.col) << message << std::endl;
         ++n_errors;
     }
