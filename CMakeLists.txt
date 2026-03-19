@@ -37,7 +37,8 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_executable(tests
-        test/scanner_test.cpp)
+        test/scanner_test.cpp
+        test/parser_test.cpp)
 target_include_directories(tests PRIVATE
         src/
         include/)

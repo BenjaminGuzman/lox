@@ -1,9 +1,7 @@
 #include "../include/parser.h"
 
-#include <set>
 #include <stack>
 
-#include "serializer.h"
 #include "internal/utils.h"
 
 namespace lox {
@@ -22,7 +20,7 @@ TokenOpType ASTNode::op_type() const {
 
 AST::AST(Scanner& scanner, bool autobuild) : scanner(scanner), root(std::make_unique<ASTNode>(ASTNode{AST_ROOT, "", std::monostate{}, 0, 0})) {
     if (autobuild)
-        build();
+        [[maybe_unused]] auto _ = build();
 }
 
 void ensure_right_associativity(const ASTNode* parent) {
