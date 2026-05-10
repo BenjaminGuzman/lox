@@ -38,7 +38,7 @@ endif()
 # build the interpreter executable
 add_executable(interpreter
         src/main.cpp
-        src/Interpreter.cpp)
+        src/interpreter.cpp)
 target_include_directories(interpreter PRIVATE
         include/)
 target_link_libraries(interpreter lox)
