@@ -27,21 +27,24 @@ set(CORE_SOURCES
         src/serializer.cpp)
 
 add_library(lox STATIC ${CORE_SOURCES})
-target_include_directories(lox PRIVATE
-        include/)
+target_include_directories(lox PRIVATE include/)
 #target_link_libraries(lox ${llvm_libs})
 
 if(TOKEN_PRETTY_PRINT)
     target_compile_definitions(lox PRIVATE TOKEN_PRETTY_PRINT)
 endif()
 
+# build a library including only the interpreter
+set(INTERPRETER_SOURCES src/interpreter.cpp)
+add_library(lox-interpreter STATIC ${INTERPRETER_SOURCES})
+target_include_directories(lox-interpreter PRIVATE include/)
+
 # build the interpreter executable
 add_executable(interpreter
-        src/main.cpp
-        src/interpreter.cpp)
+        src/main.cpp)
 target_include_directories(interpreter PRIVATE
         include/)
-target_link_libraries(interpreter lox)
+target_link_libraries(interpreter lox lox-interpreter)
 
 
 # Add tests
@@ -55,12 +58,15 @@ enable_testing()
 
 add_executable(tests
         test/scanner_test.cpp
+        test/real_number_test.cpp
+        test/interpreter_test.cpp
         test/parser_test.cpp)
 target_include_directories(tests PRIVATE
         src/
         include/)
 target_link_libraries(tests
         lox
+        lox-interpreter
         GTest::gtest_main)
 
 include(GoogleTest)

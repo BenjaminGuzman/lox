@@ -14,5 +14,15 @@ true
 (true)
 (10 + 4) + 6
 
+"Antes"
+true - true
+false - false
+false - false - true
+"Despues"
+
+(-10.50)
+
+10 - 4
+
 nil + "hola"
 true + "hola"

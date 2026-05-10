@@ -46,7 +46,7 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
 
     // compile the unary token, compile the + (something), e.g., + + + 123.5
     if (opType == UNARY)
-        return this->execute(astNode->children[0]);
+        return this->resolveOrExecute(astNode->children[0]);
 
     // compile the binary token, compile the a + b
     auto lhs = this->resolveOrExecute(astNode->children[0]);
@@ -61,6 +61,12 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
         if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, bool>)
             // both are bool, bool + bool = int(bool) + int(bool)
             return RealNumber{static_cast<u_long>(l) + static_cast<u_long>(r), 0, 0};
+        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, bool>)
+            // number + bool = number + int(bool)
+            return l + RealNumber{static_cast<u_long>(r), 0, 0};
+        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            // bool + number = int(bool) + number
+            return RealNumber{static_cast<u_long>(l), 0, 0} + r;
 
         constexpr bool is_l_string = std::is_same_v<std::decay_t<l_type>, std::string> || std::is_same_v<std::decay_t<l_type>, std::string_view>;
         constexpr bool is_r_string = std::is_same_v<std::decay_t<r_type>, std::string> || std::is_same_v<std::decay_t<r_type>, std::string_view>;
@@ -99,54 +105,105 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
         if constexpr (std::is_same_v<std::decay_t<l_type>, std::nullptr_t> && is_r_string)
             return "nil" + r_str;
 
-        throw std::runtime_error("Invalid operands for '+' operator."); // FIXME improve this
+        throw std::runtime_error("Invalid operands for '+' binary operator."); // FIXME improve this
     }, lhs, rhs);
 }
 
 underlying_t Interpreter::compileMinus(const std::unique_ptr<ASTNode>& astNode) const {
+    auto opType = astNode->must_be_op_type
+                        .or_else([]() {return std::optional<TokenOpType>(UNARY);})
+                        .value();
 
+    // compile the unary token, compile the - (something), e.g., - - - 123.5
+    if (opType == UNARY) {
+        auto res = this->resolveOrExecute(astNode->children[0]);
+        return std::visit([]<typename T>(T&& value) -> underlying_t {
+            if constexpr (std::is_same_v<std::decay_t<T>, RealNumber>) { // negate a number
+                const auto num = static_cast<RealNumber>(value);
+                return RealNumber{num.integer, num.fractional, num.n_fractional_digits, !num.is_negative};
+            }
+
+            throw std::runtime_error("Invalid operands for '-' unary operator."); // FIXME improve this
+        }, res);
+    }
+
+    // compile the binary token, compile the a - b
+    auto lhs = this->resolveOrExecute(astNode->children[0]);
+    auto rhs = this->resolveOrExecute(astNode->children[1]);
+
+    // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
+    return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            // both are numbers, number - number -> number
+            return l - r;
+        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, bool>)
+            // both are bool, bool - bool = int(bool) - int(bool)
+            return RealNumber{static_cast<u_long>(l) - static_cast<u_long>(r), 0, 0};
+        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, bool>)
+            // number - bool = number - int(bool)
+            return l - RealNumber{static_cast<u_long>(r), 0, 0};
+        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            // bool - number = int(bool) - number
+            return RealNumber{static_cast<u_long>(l), 0, 0} - r;
+
+        throw std::runtime_error("Invalid operands for '-' binary operator."); // FIXME improve this
+    }, lhs, rhs);
+}
+
+underlying_t Interpreter::compileNot(const std::unique_ptr<ASTNode>& astNode) const {
+    return std::visit([]<typename T>(T&& value) -> underlying_t {
+        // according to evaluation system:
+        // For truthyness and falsyness, we will follow the convention introduced in the book,
+        // where false and nil are falsy, and everything else is truthy.
+        // which is kinda weird, what about !0?
+        bool value_as_bool = true;
+        if constexpr (std::is_same_v<std::decay_t<T>, bool>)
+            value_as_bool = value;
+        else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>)
+            value_as_bool = false;
+
+        return !value_as_bool;
+    }, this->resolveOrExecute(astNode->children[0]));
 }
 
 underlying_t Interpreter::compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const {
+    underlying_t res = std::monostate();
+    for (auto&& node : astNode->children) {
+        std::visit([]<typename T>(T&& value) {
+            if constexpr (std::is_same_v<std::decay_t<T>, std::string>
+                || std::is_same_v<std::decay_t<T>, std::string_view>
+                || std::is_same_v<std::decay_t<T>, RealNumber>) {
+                std::cout << value << std::endl;
+            } else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>) {
+                std::cout << "nil" << std::endl;
+            } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
+                std::cout << to_string(value) << std::endl;
+            }
+        }, res = execute(node));
+    }
 
+    return std::visit([]<typename T>(T&& value) -> underlying_t {
+        // returning a string view as end result is dangerous as it may get deleted after the interpreter is done
+        if constexpr (std::is_same_v<std::decay_t<T>, std::string_view>)
+            return std::string(value);
+        return value;
+    }, res);
+}
+
+underlying_t Interpreter::compileParenthesis(const std::unique_ptr<ASTNode>& astNode) const {
+    if (astNode->children.empty())
+        return std::monostate();
+    return execute(astNode->children[0]); // for until right parent is reached?
 }
 
 underlying_t Interpreter::execute(const std::unique_ptr<ASTNode>& root) const {
     // TODO write an interpreter (and a compiler) that works bottom-up, no stack-overflow
-    switch (root->token.type) {
-    case AST_ROOT: {
-        //underlying_t last_value;
-        for (auto&& ast_node : root->children) {
-            std::visit([]<typename T>(T&& value) {
-                if constexpr (std::is_same_v<std::decay_t<T>, std::string>
-                    || std::is_same_v<std::decay_t<T>, std::string_view>
-                    || std::is_same_v<std::decay_t<T>, RealNumber>) {
-                    std::cout << value << std::endl;
-                } else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>) {
-                    std::cout << "nil" << std::endl;
-                } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
-                    std::cout << to_string(value) << std::endl;
-                }
-            }, execute(ast_node));
-        }
-        return std::monostate();
-    }
-    case LEFT_PAREN:
-        if (root->children.empty())
-            return std::monostate();
-        return execute(root->children[0]);
-    case PLUS:
-        return compilePlus(root);
-    default:
-        // likely a constant
-        auto resolved = resolveToken(root->token);
-        std::visit([]<typename T>(T&& value) {
-            if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {
-                std::cerr << "Will come later..." << std::endl;
-            }
-        }, resolved);
-        return resolved;
-    }
+    if (TOKEN_COMPILERS.contains(root->token.type))
+        return TOKEN_COMPILERS.at(root->token.type)(root);
+
+    // no handler was defined for this token, let's try to resolve it, maybe it's a symbol?
+    //  or... it simply doesn't need to resolve to nothing, e.g., ';' resolves to monostate
+    return resolveToken(root->token);
 }
 
 [[nodiscard]] std::string to_string(const bool b) {

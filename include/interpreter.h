@@ -35,16 +35,20 @@ private:
     [[nodiscard]] underlying_t compileString(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compilePlus(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileMinus(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileNot(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileParenthesis(const std::unique_ptr<ASTNode>& astNode) const;
 
     /**
      * Stores the token types to the function that should be responsible for compiling the token.
      */
     const std::unordered_map<TokenType, std::function<underlying_t(const std::unique_ptr<ASTNode>& astNode)>> TOKEN_COMPILERS = {
-        {NUMBER,    [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNumber(astNode);}},
-        {AST_ROOT,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileASTRoot(astNode);}},
-        {PLUS,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePlus(astNode);}},
-        {MINUS,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileMinus(astNode);}},
+        {NUMBER,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNumber(astNode);}},
+        {AST_ROOT,   [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileASTRoot(astNode);}},
+        {PLUS,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePlus(astNode);}},
+        {MINUS,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileMinus(astNode);}},
+        {NOT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNot(astNode);}},
+        {LEFT_PAREN, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileParenthesis(astNode);}}
     };
 public:
     /**

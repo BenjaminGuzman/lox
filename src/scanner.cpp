@@ -16,7 +16,7 @@ Scanner::Scanner(const std::string& filepath, bool is_filepath): filepath(filepa
         stream.rdbuf(stringstream.rdbuf());
     }
 
-    if (!stream.good())
+    if (!filestream.good() || !stream.good())
         throw std::runtime_error("Couldn't open \"" + filepath + "\" to read from it. " + strerror(errno));
 
     tokens.push_back({}); // add the previous token

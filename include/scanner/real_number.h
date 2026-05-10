@@ -3,12 +3,16 @@
 #include <string>
 #include <ostream>
 
+/**
+ * Actual number is = integer + fractional / 10 ^ n_fractional_digits
+ * e.g., 3.001 = {integer = 3, fractional = 1, n_fractional_digits = 3}
+ */
 class RealNumber {
 public:
-    const unsigned long long integer{};
-    const unsigned long long fractional{};
-    const int n_fractional_digits{};
-    const bool is_negative = false;
+    unsigned long long integer{};
+    unsigned long long fractional{};
+    int n_fractional_digits{};
+    bool is_negative = false;
     [[nodiscard]] double to_double() const;
 };
 
@@ -26,8 +30,12 @@ std::string to_string(const RealNumber& number);
 std::string to_string(const RealNumber* number);
 
 RealNumber operator+(const RealNumber& lhs, const RealNumber& rhs);
+RealNumber operator-(const RealNumber& lhs, const RealNumber& rhs);
+bool operator==(const RealNumber& lhs, const RealNumber& rhs);
+
 std::string operator+(const std::string& lhs, const RealNumber& rhs);
 std::string operator+(const RealNumber& lhs, const std::string& rhs);
+
 std::ostream& operator<<(std::ostream& os, const RealNumber& number);
 
 
