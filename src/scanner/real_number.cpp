@@ -4,7 +4,7 @@
 #include <cmath>
 
 std::string to_string(const RealNumber& number) {
-    if (number.n_fractional_digits == 0 && number.fractional == 0) {
+    if (number.n_fractional_digits == 0 || number.fractional == 0) {
         return std::to_string(number.integer) + ".0";
     }
 

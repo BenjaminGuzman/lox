@@ -82,16 +82,12 @@ underlying_t Interpreter::execute(const std::unique_ptr<ASTNode>& root) const {
         //underlying_t last_value;
         for (auto&& ast_node : root->children) {
             std::visit([]<typename T>(T&& value) {
-                if constexpr (std::is_same_v<std::decay_t<T>, std::string> || std::is_same_v<std::decay_t<T>, RealNumber>
-                    || std::is_same_v<std::decay_t<T>, bool>) {
-                    if constexpr (std::is_same_v<std::decay_t<T>, RealNumber>) {
-                        // FIXME REMOVE THIS. THIS IS DUMB, THE EVALUATION SYSTEM EXPECTS THIS
-                        std::cout << (static_cast<RealNumber>(value).to_double() == 0.0f ? "false" : "true") << std::endl;
-                        return;
-                    }
+                if constexpr (std::is_same_v<std::decay_t<T>, std::string> || std::is_same_v<std::decay_t<T>, RealNumber>) {
                     std::cout << value << std::endl;
                 } else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>) {
                     std::cout << "nil" << std::endl;
+                } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
+                    std::cout << (value ? "true" : "false") << std::endl;
                 }
             }, execute(ast_node));
         }
