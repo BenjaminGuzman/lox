@@ -52,39 +52,53 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
     auto lhs = this->resolveOrExecute(astNode->children[0]);
     auto rhs = this->resolveOrExecute(astNode->children[1]);
 
-    // by now, both lhs and rhs are (should be) either a string or a number
-    return std::visit([](auto&& l, auto&& r) -> underlying_t {
-        using l_type = std::decay_t<decltype(l)>;
-        using r_type = std::decay_t<decltype(r)>;
-
-        if constexpr (std::is_same_v<l_type, RealNumber> && std::is_same_v<r_type, RealNumber>)
-            // both are numbers, number + number -> number (that's the only case, all other cases produce a string)
+    // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
+    return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+        // the only two cases were the + operator doesn't produce a string
+        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            // both are numbers, number + number -> number
             return l + r;
+        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, bool>)
+            // both are bool, bool + bool = int(bool) + int(bool)
+            return RealNumber{static_cast<u_long>(l) + static_cast<u_long>(r), 0, 0};
 
-        constexpr bool is_l_string = std::is_same_v<l_type, std::string> || std::is_same_v<l_type, std::string_view>;
-        constexpr bool is_r_string = std::is_same_v<r_type, std::string> || std::is_same_v<r_type, std::string_view>;
+        constexpr bool is_l_string = std::is_same_v<std::decay_t<l_type>, std::string> || std::is_same_v<std::decay_t<l_type>, std::string_view>;
+        constexpr bool is_r_string = std::is_same_v<std::decay_t<r_type>, std::string> || std::is_same_v<std::decay_t<r_type>, std::string_view>;
         std::string l_str;
         std::string r_str;
 
-        if constexpr (std::is_same_v<l_type, std::string_view>) {
+        if constexpr (std::is_same_v<std::decay_t<l_type>, std::string_view>) {
             l_str = std::string(l);
-        } else if constexpr (std::is_same_v<l_type, std::string>) {
+        } else if constexpr (std::is_same_v<std::decay_t<l_type>, std::string>) {
             l_str = l;
         }
 
-        if constexpr (std::is_same_v<r_type, std::string_view>) {
+        if constexpr (std::is_same_v<std::decay_t<r_type>, std::string_view>) {
             r_str = std::string(r);
-        } else if constexpr (std::is_same_v<r_type, std::string>) {
+        } else if constexpr (std::is_same_v<std::decay_t<r_type>, std::string>) {
             r_str = r;
         }
 
+        // string + string, or string + number
         if constexpr (is_l_string && is_r_string)
             return l_str + r_str;
-        if constexpr (is_l_string && std::is_same_v<r_type, RealNumber>)
+        if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             return l_str + r;
-        if constexpr (std::is_same_v<l_type, RealNumber> && is_r_string)
+        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && is_r_string)
             return l + r_str;
-        
+
+        // string + boolean
+        if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, bool>)
+            return l_str + to_string(r);
+        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && is_r_string)
+            return to_string(l) + r_str;
+
+        // string + nullptr
+        if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, nullptr_t>)
+            return l_str + "nil";
+        if constexpr (std::is_same_v<std::decay_t<l_type>, std::nullptr_t> && is_r_string)
+            return "nil" + r_str;
+
         throw std::runtime_error("Invalid operands for '+' operator."); // FIXME improve this
     }, lhs, rhs);
 }
@@ -98,6 +112,7 @@ underlying_t Interpreter::compileASTRoot(const std::unique_ptr<ASTNode>& astNode
 }
 
 underlying_t Interpreter::execute(const std::unique_ptr<ASTNode>& root) const {
+    // TODO write an interpreter (and a compiler) that works bottom-up, no stack-overflow
     switch (root->token.type) {
     case AST_ROOT: {
         //underlying_t last_value;
@@ -110,12 +125,16 @@ underlying_t Interpreter::execute(const std::unique_ptr<ASTNode>& root) const {
                 } else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>) {
                     std::cout << "nil" << std::endl;
                 } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
-                    std::cout << (value ? "true" : "false") << std::endl;
+                    std::cout << to_string(value) << std::endl;
                 }
             }, execute(ast_node));
         }
         return std::monostate();
     }
+    case LEFT_PAREN:
+        if (root->children.empty())
+            return std::monostate();
+        return execute(root->children[0]);
     case PLUS:
         return compilePlus(root);
     default:
@@ -128,5 +147,9 @@ underlying_t Interpreter::execute(const std::unique_ptr<ASTNode>& root) const {
         }, resolved);
         return resolved;
     }
+}
+
+[[nodiscard]] std::string to_string(const bool b) {
+    return b ? "true" : "false";
 }
 }

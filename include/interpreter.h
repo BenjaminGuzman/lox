@@ -54,6 +54,9 @@ public:
      */
     [[nodiscard]] underlying_t execute(const std::unique_ptr<ASTNode>& root) const;
 };
+
+[[nodiscard]] std::string to_string(bool b);
+//[[nodiscard]] std::ostream& operator<<(std::ostream& os, bool b);
 }
 
 #endif //CODECRAFTERS_INTERPRETER_INTERPRETER_H

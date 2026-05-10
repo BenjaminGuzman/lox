@@ -236,6 +236,9 @@ bool BasicToken<T>::can_be_arithmetic_operand() const {
     case STRING:
     case IDENTIFIER:
     case RIGHT_PAREN: // a group can be an operand, e.g. (10 + 9) * 9
+    case NIL: // These should be allowed, e.g., "result is: " + nil
+    case TRUE: // e.g., "result is: " + true, false + true = 1, "+" operator on booleans will work as if they were 0/1
+    case FALSE: // e.g., "result is: " + false, false + false = 0, "+" operator on booleans will work as if they were 0/1
         return true;
     default:
         return false;

@@ -1,3 +1,7 @@
+nil + "hola"
+true + true
+false + true
+false + false
 true
 "hola" + 10
 10 + 10
@@ -5,3 +9,10 @@ true
 10 + "mundo"
 10
 10.40
+
+((("hola")))
+(true)
+(10 + 4) + 6
+
+nil + "hola"
+true + "hola"
