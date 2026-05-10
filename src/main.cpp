@@ -4,12 +4,11 @@
 #include <sstream>
 #include <string>
 #include <filesystem>
-#include <../include/compiler.h>
 
 #include "interpreter.h"
-#include "../include/parser.h"
-#include "../include/scanner.h"
-#include "../include/serializer.h"
+#include "parser.h"
+#include "scanner.h"
+#include "serializer.h"
 
 int main(int argc, char *argv[]) {
     // Disable output buffering
