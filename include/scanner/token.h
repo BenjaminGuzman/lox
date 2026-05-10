@@ -74,7 +74,7 @@ enum TokenType {
 
     AST_ROOT, // especial value
 };
-std::string to_string(const TokenType& type);
+std::string to_string_as_expected_by_evaluation_system(const TokenType& type);
 inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {
     {"(", LEFT_PAREN},
     {")", RIGHT_PAREN},
@@ -359,12 +359,12 @@ using RealNumberTokenView = BasicTokenView<RealNumber>;
 template<typename T>
 std::string BasicToken<T>::string(const std::string& filepath) const {
     std::ostringstream basic_serialized_token_buff;
-    basic_serialized_token_buff << to_string(type) << " " << lexeme << " ";
+    basic_serialized_token_buff << to_string_as_expected_by_evaluation_system(type) << " " << lexeme << " ";
     std::visit([&basic_serialized_token_buff, this]<typename E>(E&& lit) {
         if constexpr (std::is_same_v<std::decay_t<E>, std::string>)
              basic_serialized_token_buff << StringTokenView(*this).literal();
         if constexpr (std::is_same_v<std::decay_t<E>, RealNumber>)
-            basic_serialized_token_buff << to_string(lit);
+            basic_serialized_token_buff << to_string_as_expected_by_evaluation_system(lit);
         if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>)
             basic_serialized_token_buff << "null";
     }, get_literal());
@@ -432,7 +432,7 @@ inline std::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {PRINT, "PRINT"},
 };
 
-inline std::string to_string(const TokenType& type) {
+inline std::string to_string_as_expected_by_evaluation_system(const TokenType& type) {
     if (tokenTypeStrings.contains(type))
         return tokenTypeStrings[type];
 

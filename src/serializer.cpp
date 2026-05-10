@@ -71,7 +71,7 @@ void add_to_buff(const ASTNode* node, std::stringstream& buff) {
         if constexpr (std::is_same_v<std::decay_t<E>, std::string>)
             buff << StringTokenView(node->token).literal();
         if constexpr (std::is_same_v<std::decay_t<E>, RealNumber>)
-            buff << to_string(lit);
+            buff << to_string_as_expected_by_evaluation_system(lit);
         if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>) // serialize the token itself
             buff << node->token.lexeme;
     }, node->token.get_literal());

@@ -7,7 +7,7 @@ namespace lox {
 TEST(ScannerTest, HandlesEmptySource) {
     Scanner scanner("", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, EOF_TOKEN) << "Expected EOF token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, EOF_TOKEN) << "Expected EOF token, received " << to_string_as_expected_by_evaluation_system(token.type);
 }
 
 TEST(ScannerTest, ScansSingleCharacterTokens) {
@@ -19,7 +19,7 @@ TEST(ScannerTest, ScansSingleCharacterTokens) {
 
     for (const auto& expected_type : expected_types) {
         Token token = scanner.next_token();
-        EXPECT_EQ(token.type, expected_type) << "Expected " << to_string(expected_type) << ", received " << to_string(token.type);
+        EXPECT_EQ(token.type, expected_type) << "Expected " << to_string_as_expected_by_evaluation_system(expected_type) << ", received " << to_string_as_expected_by_evaluation_system(token.type);
     }
 }
 
@@ -31,38 +31,38 @@ TEST(ScannerTest, ScansMultiCharacterTokens) {
 
     for (const auto& expected_type : expected_types) {
         Token token = scanner.next_token();
-        EXPECT_EQ(token.type, expected_type) << "Expected " << to_string(expected_type) << ", received " << to_string(token.type);
+        EXPECT_EQ(token.type, expected_type) << "Expected " << to_string_as_expected_by_evaluation_system(expected_type) << ", received " << to_string_as_expected_by_evaluation_system(token.type);
     }
 }
 
 TEST(ScannerTest, IgnoresComments) {
     Scanner scanner("= // this is a comment\n==", false);
     Token token1 = scanner.next_token();
-    EXPECT_EQ(token1.type, EQ) << "Expected EQ token, received " << to_string(token1.type);
+    EXPECT_EQ(token1.type, EQ) << "Expected EQ token, received " << to_string_as_expected_by_evaluation_system(token1.type);
     Token token2 = scanner.next_token();
-    EXPECT_EQ(token2.type, EQEQ) << "Expected EQEQ token, received " << to_string(token2.type);
+    EXPECT_EQ(token2.type, EQEQ) << "Expected EQEQ token, received " << to_string_as_expected_by_evaluation_system(token2.type);
     Token token3 = scanner.next_token();
-    EXPECT_EQ(token3.type, EOF_TOKEN) << "Expected EOF token, received " << to_string(token3.type);
+    EXPECT_EQ(token3.type, EOF_TOKEN) << "Expected EOF token, received " << to_string_as_expected_by_evaluation_system(token3.type);
 }
 
 TEST(ScannerTest, HandlesUnterminatedComment) {
     Scanner scanner("= // this is an unterminated comment", false);
     Token token1 = scanner.next_token();
-    EXPECT_EQ(token1.type, EQ) << "Expected EQ token, received " << to_string(token1.type);
+    EXPECT_EQ(token1.type, EQ) << "Expected EQ token, received " << to_string_as_expected_by_evaluation_system(token1.type);
     Token token2 = scanner.next_token();
-    EXPECT_EQ(token2.type, EOF_TOKEN) << "Expected EOF token, received " << to_string(token2.type);
+    EXPECT_EQ(token2.type, EOF_TOKEN) << "Expected EOF token, received " << to_string_as_expected_by_evaluation_system(token2.type);
 }
 
 TEST(ScannerTest, IgnoresWhitespace) {
     Scanner scanner(" \t \r \n ", false);
     const auto& next_token = scanner.next_token();
-    EXPECT_EQ(next_token.type, EOF_TOKEN) << "Expected EOF token, received " << to_string(next_token.type);
+    EXPECT_EQ(next_token.type, EOF_TOKEN) << "Expected EOF token, received " << to_string_as_expected_by_evaluation_system(next_token.type);
 }
 
 TEST(ScannerTest, TracksLineNumbers) {
     Scanner scanner("\n\n\n", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, EOF_TOKEN) << "Expected EOF token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, EOF_TOKEN) << "Expected EOF token, received " << to_string_as_expected_by_evaluation_system(token.type);
 }
 
 TEST(ScannerTest, TracksColumnNumbers) {
@@ -82,16 +82,16 @@ TEST(ScannerTest, TracksColumnNumbers) {
 
     for (const auto& expected : expected_tokens) {
         Token token = scanner.next_token();
-        EXPECT_EQ(token.type, std::get<0>(expected)) << "Expected " << to_string(std::get<0>(expected)) << ", received " << to_string(token.type);
-        EXPECT_EQ(token.line, std::get<1>(expected)) << "For token " << to_string(token.type) << ", expected line " << std::get<1>(expected) << ", received " << token.line;
-        EXPECT_EQ(token.col, std::get<2>(expected)) << "For token " << to_string(token.type) << ", expected col " << std::get<2>(expected) << ", received " << token.col;
+        EXPECT_EQ(token.type, std::get<0>(expected)) << "Expected " << to_string_as_expected_by_evaluation_system(std::get<0>(expected)) << ", received " << to_string_as_expected_by_evaluation_system(token.type);
+        EXPECT_EQ(token.line, std::get<1>(expected)) << "For token " << to_string_as_expected_by_evaluation_system(token.type) << ", expected line " << std::get<1>(expected) << ", received " << token.line;
+        EXPECT_EQ(token.col, std::get<2>(expected)) << "For token " << to_string_as_expected_by_evaluation_system(token.type) << ", expected col " << std::get<2>(expected) << ", received " << token.col;
     }
 }
 
 TEST(ScannerTest, ScansStringLiterals) {
     Scanner scanner("\"hello world\"", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string_as_expected_by_evaluation_system(token.type);
 
     StringTokenView str_token(token);
     EXPECT_EQ(str_token.literal(), "hello world") << "Expected 'hello world', received '" << str_token.literal() << "'";
@@ -104,7 +104,7 @@ TEST(ScannerTest, ScansStringLiterals) {
 TEST(ScannerTest, ScansStringQuotedLiterals) {
     Scanner scanner(R"("hello \"world\"")", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string_as_expected_by_evaluation_system(token.type);
 
     StringTokenView str_token(token);
     EXPECT_EQ(str_token.literal(), "hello \"world\"") << "Expected 'hello \"world\"', received '" << str_token.literal() << "'";
@@ -114,7 +114,7 @@ TEST(ScannerTest, ScansStringQuotedLiterals) {
 TEST(ScannerTest, HandlesUnterminatedString) {
     Scanner scanner("\"hello world", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, UNTERMINATED_STRING) << "Expected UNTERMINATED_STRING token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, UNTERMINATED_STRING) << "Expected UNTERMINATED_STRING token, received " << to_string_as_expected_by_evaluation_system(token.type);
 
     StringTokenView str_token(token);
     EXPECT_EQ(str_token.literal(), "hello world") << "Expected 'hello world', received '" << str_token.literal() << "'";
@@ -123,7 +123,7 @@ TEST(ScannerTest, HandlesUnterminatedString) {
 TEST(ScannerTest, HandlesUnterminatedEscapedString) {
     Scanner scanner(R"("hello world\)", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, UNTERMINATED_STRING) << "Expected UNTERMINATED_STRING token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, UNTERMINATED_STRING) << "Expected UNTERMINATED_STRING token, received " << to_string_as_expected_by_evaluation_system(token.type);
 
     StringTokenView str_token(token);
     EXPECT_EQ(str_token.literal(), "hello world") << "Expected 'hello world', received '" << str_token.literal() << "'";
@@ -133,7 +133,7 @@ TEST(ScannerTest, HandlesUnterminatedEscapedString) {
 TEST(ScannerTest, HandlesEscapedStrings) {
     Scanner scanner(R"("\n\t<- that's a line feed and tab and \"this another string\"\t")", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string_as_expected_by_evaluation_system(token.type);
 
     StringTokenView str_token(token);
     EXPECT_EQ(str_token.literal(), "\n\t<- that's a line feed and tab and \"this another string\"\t");
@@ -143,7 +143,7 @@ TEST(ScannerTest, HandlesEscapedStrings) {
 TEST(ScannerTest, HandlesUnrecognizedEscapedStrings) {
     Scanner scanner(R"("\a<- that's unrecognized\b")", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string_as_expected_by_evaluation_system(token.type);
 
     StringTokenView str_token(token);
     EXPECT_EQ(str_token.literal(), "\\a<- that's unrecognized\\b");
@@ -156,7 +156,7 @@ TEST(ScannerTest, HandlesUnrecognizedEscapedStrings) {
 TEST(ScannerTest, ScansIntegerNumbers) {
     Scanner scanner("12345", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, NUMBER) << "Expected NUMBER token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, NUMBER) << "Expected NUMBER token, received " << to_string_as_expected_by_evaluation_system(token.type);
 
     RealNumberTokenView number_token(token);
     const RealNumber& number = number_token.literal();
@@ -167,7 +167,7 @@ TEST(ScannerTest, ScansIntegerNumbers) {
 TEST(ScannerTest, ScansDecimalNumbers) {
     Scanner scanner("123.45", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, NUMBER) << "Expected NUMBER token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, NUMBER) << "Expected NUMBER token, received " << to_string_as_expected_by_evaluation_system(token.type);
 
     RealNumberTokenView number_token(token);
     const RealNumber& number = number_token.literal();
@@ -178,11 +178,11 @@ TEST(ScannerTest, ScansDecimalNumbers) {
 TEST(ScannerTest, ScansIdentifiers) {
     Scanner scanner("my_var an_identifier", false);
     Token token1 = scanner.next_token();
-    EXPECT_EQ(token1.type, IDENTIFIER) << "Expected IDENTIFIER token, received " << to_string(token1.type);
+    EXPECT_EQ(token1.type, IDENTIFIER) << "Expected IDENTIFIER token, received " << to_string_as_expected_by_evaluation_system(token1.type);
     EXPECT_EQ(token1.lexeme, "my_var") << "Expected lexeme 'my_var', received '" << token1.lexeme << "'";
 
     Token token2 = scanner.next_token();
-    EXPECT_EQ(token2.type, IDENTIFIER) << "Expected IDENTIFIER token, received " << to_string(token2.type);
+    EXPECT_EQ(token2.type, IDENTIFIER) << "Expected IDENTIFIER token, received " << to_string_as_expected_by_evaluation_system(token2.type);
     EXPECT_EQ(token2.lexeme, "an_identifier") << "Expected lexeme 'an_identifier', received '" << token2.lexeme << "'";
 }
 
@@ -195,14 +195,14 @@ TEST(ScannerTest, ScansKeywords) {
 
     for (const auto& expected_type : expected_types) {
         Token token = scanner.next_token();
-        EXPECT_EQ(token.type, expected_type) << "Expected " << to_string(expected_type) << ", received " << to_string(token.type);
+        EXPECT_EQ(token.type, expected_type) << "Expected " << to_string_as_expected_by_evaluation_system(expected_type) << ", received " << to_string_as_expected_by_evaluation_system(token.type);
     }
 }
 
 TEST(ScannerTest, HandlesUnrecognizedCharacter) {
     Scanner scanner("#", false);
     Token token = scanner.next_token();
-    EXPECT_EQ(token.type, UNRECOGNIZED) << "Expected UNRECOGNIZED token, received " << to_string(token.type);
+    EXPECT_EQ(token.type, UNRECOGNIZED) << "Expected UNRECOGNIZED token, received " << to_string_as_expected_by_evaluation_system(token.type);
 }
 
 TEST(ScannerTest, next_and_peek_methods_work) {

@@ -81,9 +81,9 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
         if constexpr (is_l_string && is_r_string)
             return l_str + r_str;
         if constexpr (is_l_string && std::is_same_v<r_type, RealNumber>)
-            return l_str + to_string(r);
+            return l_str + r;
         if constexpr (std::is_same_v<l_type, RealNumber> && is_r_string)
-            return to_string(l) + r_str;
+            return l + r_str;
         
         throw std::runtime_error("Invalid operands for '+' operator."); // FIXME improve this
     }, lhs, rhs);

@@ -5,6 +5,19 @@
 
 std::string to_string(const RealNumber& number) {
     if (number.n_fractional_digits == 0 || number.fractional == 0) {
+        return std::to_string(number.integer);
+    }
+
+    // {:0{}} means: pad with '0', and take the width from the next argument
+    return std::format("{}.{:0{}}", number.integer, number.fractional, number.n_fractional_digits);
+}
+
+std::string to_string(const RealNumber* number) {
+    return to_string(*number);
+}
+
+std::string to_string_as_expected_by_evaluation_system(const RealNumber& number) {
+    if (number.n_fractional_digits == 0 || number.fractional == 0) {
         return std::to_string(number.integer) + ".0";
     }
 
@@ -13,8 +26,8 @@ std::string to_string(const RealNumber& number) {
     return ss.str();
 }
 
-std::string to_string(const RealNumber* number) {
-    return to_string(*number);
+std::string to_string_as_expected_by_evaluation_system(const RealNumber* number) {
+    return to_string_as_expected_by_evaluation_system(*number);
 }
 
 [[nodiscard]] double RealNumber::to_double() const {
@@ -40,6 +53,14 @@ RealNumber operator+(const RealNumber& lhs, const RealNumber& rhs) {
     }
 
     return RealNumber{total_int, total_frac, max_digits};
+}
+
+std::string operator+(const std::string& lhs, const RealNumber& rhs) {
+    return lhs + to_string(rhs);
+}
+
+std::string operator+(const RealNumber& lhs, const std::string& rhs) {
+    return to_string(lhs) + rhs;
 }
 
 std::ostream& operator<<(std::ostream& os, const RealNumber& number) {
