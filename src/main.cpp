@@ -4,7 +4,9 @@
 #include <sstream>
 #include <string>
 #include <filesystem>
+#include <../include/compiler.h>
 
+#include "interpreter.h"
 #include "../include/parser.h"
 #include "../include/scanner.h"
 #include "../include/serializer.h"
@@ -44,6 +46,21 @@ int main(int argc, char *argv[]) {
         int n_errors_serialize = Serializer::serialize(ast);
         if (n_errors_serialize > 0)
             return 65;
+    } else if (command == "evaluate") {
+        std::string filepath = argv[2];
+        auto abs_filepath = std::filesystem::canonical(filepath);
+
+        lox::Scanner scanner(abs_filepath);
+        lox::AST ast(scanner, false);
+        int n_errors_parse = ast.build();
+        if (n_errors_parse >  0)
+            return 65;
+
+        lox::Interpreter interpreter;
+        interpreter.execute(ast.root);
+
+        // lox::Compiler compiler;
+        // compiler.compile(std::move(ast.root));
     } else {
         std::cerr << "Unknown command: " << command << std::endl;
         return 1;

@@ -9,7 +9,7 @@
 // the actual memory used for a variable will be the biggest type here...
 // so it's not very efficient, but way more efficient than storing as unique_ptr, or void*, or something else...
 // std::monostate for those tokens that do not represent a literal value
-using underlying_t = std::variant<std::monostate, std::string, RealNumber>;
+using underlying_t = std::variant<std::monostate, std::string, RealNumber, bool, nullptr_t>;
 
 // Token operator type
 enum TokenOpType {

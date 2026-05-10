@@ -1,53 +1,7 @@
-7941.1540
-22
+1 + 2 + 3 + 7
+10 + 1
+10
+
 true
-"hello"
-""
-18+61
-
-
-,.$(#
-"Unterminated string in a single line
-"Super string"  "Another super string" 10 "and another..." 77 "And unterminated..."
-42.00000
-123
--789
-10.987
-.
-42
-1
-42.00000
-{
-(()
-{}
-()
-}
-dsfhio
-*/,;-+.
-
-{=}=={={={=={===
-
-!= !!!!!=
-===
-
-// this is a comment
-
-<<=>>=
-
-#<|SPACE|>(
-)<|TAB|>@
-
-"Super string"  "Another super string" "and another..." 77
-
-"Unterminated string in a single line
-
-{}
-
-const _foo123 = 10;
-
-var uno = 10
-uno * dos
-
-"Unterminated string
-
-if while true false var fun print nil
+false
+nil
