@@ -4,6 +4,7 @@ namespace lox {
 underlying_t Interpreter::resolveToken(const Token& token) const {
     switch (token.type) {
     case STRING:
+        return StringTokenView(token).literal();
     case NUMBER:
         return token.get_literal();
     case TRUE:
@@ -56,15 +57,35 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
         using l_type = std::decay_t<decltype(l)>;
         using r_type = std::decay_t<decltype(r)>;
 
-        if constexpr ((std::is_same_v<l_type, RealNumber> && std::is_same_v<r_type, RealNumber>)
-            || (std::is_same_v<l_type, std::string> && std::is_same_v<r_type, std::string>))
+        if constexpr (std::is_same_v<l_type, RealNumber> && std::is_same_v<r_type, RealNumber>)
+            // both are numbers, number + number -> number (that's the only case, all other cases produce a string)
             return l + r;
-        else if constexpr (std::is_same_v<l_type, std::string> && std::is_same_v<r_type, RealNumber>)
-            return l + to_string(r);
-        else if constexpr (std::is_same_v<l_type, RealNumber> && std::is_same_v<r_type, std::string>)
-            return to_string(l) + r;
+
+        constexpr bool is_l_string = std::is_same_v<l_type, std::string> || std::is_same_v<l_type, std::string_view>;
+        constexpr bool is_r_string = std::is_same_v<r_type, std::string> || std::is_same_v<r_type, std::string_view>;
+        std::string l_str;
+        std::string r_str;
+
+        if constexpr (std::is_same_v<l_type, std::string_view>) {
+            l_str = std::string(l);
+        } else if constexpr (std::is_same_v<l_type, std::string>) {
+            l_str = l;
+        }
+
+        if constexpr (std::is_same_v<r_type, std::string_view>) {
+            r_str = std::string(r);
+        } else if constexpr (std::is_same_v<r_type, std::string>) {
+            r_str = r;
+        }
+
+        if constexpr (is_l_string && is_r_string)
+            return l_str + r_str;
+        if constexpr (is_l_string && std::is_same_v<r_type, RealNumber>)
+            return l_str + to_string(r);
+        if constexpr (std::is_same_v<l_type, RealNumber> && is_r_string)
+            return to_string(l) + r_str;
         
-        throw std::runtime_error("Invalid operands for '+' operator.");
+        throw std::runtime_error("Invalid operands for '+' operator."); // FIXME improve this
     }, lhs, rhs);
 }
 
@@ -82,7 +103,9 @@ underlying_t Interpreter::execute(const std::unique_ptr<ASTNode>& root) const {
         //underlying_t last_value;
         for (auto&& ast_node : root->children) {
             std::visit([]<typename T>(T&& value) {
-                if constexpr (std::is_same_v<std::decay_t<T>, std::string> || std::is_same_v<std::decay_t<T>, RealNumber>) {
+                if constexpr (std::is_same_v<std::decay_t<T>, std::string>
+                    || std::is_same_v<std::decay_t<T>, std::string_view>
+                    || std::is_same_v<std::decay_t<T>, RealNumber>) {
                     std::cout << value << std::endl;
                 } else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>) {
                     std::cout << "nil" << std::endl;

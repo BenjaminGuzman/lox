@@ -1,1 +1,7 @@
 true
+"hola" + 10
+10 + 10
+"hola" + "mundo"
+10 + "mundo"
+10
+10.40
