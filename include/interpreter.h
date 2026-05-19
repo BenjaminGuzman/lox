@@ -35,6 +35,8 @@ private:
     [[nodiscard]] underlying_t compileString(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compilePlus(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileMinus(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileStar(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileSlash(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileNot(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileParenthesis(const std::unique_ptr<ASTNode>& astNode) const;
@@ -47,6 +49,8 @@ private:
         {AST_ROOT,   [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileASTRoot(astNode);}},
         {PLUS,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePlus(astNode);}},
         {MINUS,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileMinus(astNode);}},
+        {STAR,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileStar(astNode);}},
+        {SLASH,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileSlash(astNode);}},
         {NOT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNot(astNode);}},
         {LEFT_PAREN, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileParenthesis(astNode);}}
     };

@@ -180,6 +180,50 @@ TEST(InterpreterIntegrationTest, BinaryMinus_NumberAndBoolean) {
     ASSERT_EQ(get_value<RealNumber>(result2), RealNumber(10, 0, 0, true)); // 0-10=-10
 }
 
+TEST(InterpreterIntegrationTest, Multiplication_Numbers) {
+    underlying_t result = interpret_expression("1 * 2");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(2, 0, 0, false));
+
+    result = interpret_expression("-9.99 * 0.99");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(9, 8901, 4, true));
+
+    result = interpret_expression("-9.0000000000000009 * -0.000000000000000001");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(0, 90000000000000009, 34, false));
+}
+
+TEST(InterpreterIntegrationTest, Multiplication_StringRepeat) {
+    underlying_t result = interpret_expression("\"hola\" * 0");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "");
+
+    result = interpret_expression("\"hola\" * 3");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "holaholahola");
+
+    result = interpret_expression("\"hola\" * -4.5"); // this expression should not be valid
+    ASSERT_TRUE(std::holds_alternative<std::monostate>(result));
+
+    result = interpret_expression("\"hola\" * 0.5"); // this expression should not be valid
+    ASSERT_TRUE(std::holds_alternative<std::monostate>(result));
+}
+
+TEST(InterpreterIntegrationTest, Division_Numbers) {
+    underlying_t result = interpret_expression("1 / 2");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(0, 5, 1, false));
+
+    result = interpret_expression("51 / 5");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(10, 2, 1, false));
+
+    result = interpret_expression("-9.99 / 9.99");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(1, 0, 0, true));
+}
+
 TEST(InterpreterIntegrationTest, ParenthesizedExpression) {
     // (1 + 2)
     underlying_t result = interpret_expression("(1 + 2)");

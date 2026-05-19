@@ -39,6 +39,70 @@ underlying_t Interpreter::compileString(const std::unique_ptr<ASTNode>& astNode)
     return astNode->token.get_literal();
 }
 
+underlying_t Interpreter::compileStar(const std::unique_ptr<ASTNode>& astNode) const {
+    // compile the binary token, compile the a * b
+    auto lhs = this->resolveOrExecute(astNode->children[0]);
+    auto rhs = this->resolveOrExecute(astNode->children[1]);
+
+    // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
+    return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+        // the only case were the * operator doesn't produce a number
+        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            return l * r;
+
+        constexpr bool is_l_string = std::is_same_v<std::decay_t<l_type>, std::string> || std::is_same_v<std::decay_t<l_type>, std::string_view>;
+        constexpr bool is_r_string = std::is_same_v<std::decay_t<r_type>, std::string> || std::is_same_v<std::decay_t<r_type>, std::string_view>;
+
+        // string * string -> incorrect!
+        if constexpr (is_l_string && is_r_string)
+            throw std::runtime_error("Invalid operands for '*' binary operator."); // FIXME improve this
+
+        // string * number or number * string
+        constexpr bool should_repeat_l_string = is_l_string && std::is_same_v<std::decay_t<r_type>, RealNumber>;
+        constexpr bool should_repeat_r_string = std::is_same_v<std::decay_t<l_type>, RealNumber> && is_r_string;
+        if constexpr (should_repeat_l_string || should_repeat_r_string) {
+            RealNumber multiplicator;
+            std::string str;
+            if constexpr (should_repeat_l_string) {
+                multiplicator = static_cast<RealNumber>(r);
+                str = l; // if string_view, this should automatically copy it to str
+            } else {
+                multiplicator = static_cast<RealNumber>(l);
+                str = r;
+            }
+
+            if (multiplicator.is_negative || multiplicator.fractional != 0) {
+                std::cerr << ("Invalid operands for '*' binary operator (string repeat).") << std::endl; // FIXME improve this
+                return std::monostate();
+            }
+
+            std::string res;
+            res.reserve(res.size() * multiplicator.integer);
+            for (size_t i = 0 ; i < multiplicator.integer; ++i)
+                res += str;
+
+            return res;
+        }
+
+        throw std::runtime_error("Invalid operands for '*' binary operator."); // FIXME improve this
+    }, lhs, rhs);
+}
+
+underlying_t Interpreter::compileSlash(const std::unique_ptr<ASTNode>& astNode) const {
+    // compile the binary token, compile the a / b
+    auto lhs = this->resolveOrExecute(astNode->children[0]);
+    auto rhs = this->resolveOrExecute(astNode->children[1]);
+
+    // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
+    return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+        // the only valid case for the / operator
+        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            return l / r;
+
+        throw std::runtime_error("Invalid operands for '/' binary operator."); // FIXME improve this
+    }, lhs, rhs);
+}
+
 underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) const {
     auto opType = astNode->must_be_op_type
                         .or_else([]() {return std::optional<TokenOpType>(UNARY);})
@@ -54,7 +118,7 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
 
     // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
     return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
-        // the only two cases were the + operator doesn't produce a string
+        // the only cases were the + operator doesn't produce a string
         if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             // both are numbers, number + number -> number
             return l + r;

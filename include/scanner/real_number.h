@@ -36,6 +36,15 @@ bool operator==(const RealNumber& lhs, const RealNumber& rhs);
 std::string operator+(const std::string& lhs, const RealNumber& rhs);
 std::string operator+(const RealNumber& lhs, const std::string& rhs);
 
+RealNumber operator*(const RealNumber& lhs, const RealNumber& rhs);
+RealNumber operator/(const RealNumber& lhs, const RealNumber& rhs);
+
+bool operator<(const RealNumber& lhs, const RealNumber& rhs);
+bool operator>(const RealNumber& lhs, const RealNumber& rhs);
+bool operator<=(const RealNumber& lhs, const RealNumber& rhs);
+bool operator>=(const RealNumber& lhs, const RealNumber& rhs);
+
+
 std::ostream& operator<<(std::ostream& os, const RealNumber& number);
 
 
