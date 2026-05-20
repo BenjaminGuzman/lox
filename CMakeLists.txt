@@ -22,7 +22,7 @@ option(TOKEN_PRETTY_PRINT "Enables pretty print of a serialized token" OFF)
 # build the core lox library (parser, scanner, compiler)
 set(CORE_SOURCES
         src/scanner/real_number.cpp
-        src/scanner.cpp
+        src/scanner/scanner.cpp
         src/parser.cpp
         src/serializer.cpp)
 
