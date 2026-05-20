@@ -224,6 +224,59 @@ TEST(InterpreterIntegrationTest, Division_Numbers) {
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(1, 0, 0, true));
 }
 
+TEST(InterpreterIntegrationTest, LessThan) {
+    underlying_t result = interpret_expression("1 < 2");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("1 < 1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), false);
+}
+
+TEST(InterpreterIntegrationTest, LessThanOrEqual) {
+    underlying_t result = interpret_expression("1 <= 2");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("1 <= 1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("2 <= 1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), false);
+}
+
+TEST(InterpreterIntegrationTest, GreaterThan) {
+    underlying_t result = interpret_expression("2 > 1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("1 > 1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), false);
+
+    result = interpret_expression("1 > 2");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), false);
+}
+
+TEST(InterpreterIntegrationTest, GreaterThanOrEqual) {
+    underlying_t result = interpret_expression("2 >= 1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("1 >= 1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("1 >= 2");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), false);
+}
+
+
 TEST(InterpreterIntegrationTest, ParenthesizedExpression) {
     // (1 + 2)
     underlying_t result = interpret_expression("(1 + 2)");

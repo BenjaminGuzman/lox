@@ -228,6 +228,45 @@ TEST(RealNumberTest, EqualityOperator) {
     ASSERT_TRUE(num17 == num18);
 }
 
+TEST(RealNumberTest, ComparisonOperators) {
+    RealNumber num1(1, 23, 2, false); // 1.23
+    RealNumber num2(1, 24, 2, false); // 1.24
+    RealNumber num3(1, 23, 2, true);  // -1.23
+    RealNumber num4(2, 0, 0, false);  // 2.0
+    RealNumber zero(0, 0, 0, false);  // 0.0
+    RealNumber neg_zero(0, 0, 0, true); // -0.0
+
+    // Less than (<)
+    EXPECT_TRUE(num1 < num2);
+    EXPECT_TRUE(num3 < num1);
+    EXPECT_TRUE(num3 < zero);
+    EXPECT_FALSE(num2 < num1);
+    EXPECT_FALSE(zero < neg_zero);
+
+    // Less than or equal (<=)
+    EXPECT_TRUE(num1 <= num2);
+    EXPECT_TRUE(num1 <= num1);
+    EXPECT_TRUE(num3 <= zero);
+    EXPECT_TRUE(zero <= neg_zero);
+    EXPECT_FALSE(num4 <= num1);
+
+    // Greater than (>)
+    EXPECT_TRUE(num2 > num1);
+    EXPECT_TRUE(num1 > num3);
+    EXPECT_TRUE(num4 > num2);
+    EXPECT_TRUE(zero > num3);
+    EXPECT_FALSE(num1 > num2);
+    EXPECT_FALSE(neg_zero > zero);
+
+    // Greater than or equal (>=)
+    EXPECT_TRUE(num2 >= num1);
+    EXPECT_TRUE(num2 >= num2);
+    EXPECT_TRUE(num1 >= num3);
+    EXPECT_TRUE(neg_zero >= zero);
+    EXPECT_FALSE(num3 >= zero);
+}
+
+
 TEST(RealNumberTest, AdditionSameSign) {
     // 1.2 + 1.3 = 2.5
     RealNumber a = {.integer = 1, .fractional = 2, .n_fractional_digits = 1, .is_negative = false};

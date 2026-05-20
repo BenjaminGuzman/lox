@@ -136,6 +136,119 @@ bool operator==(const RealNumber& lhs, const RealNumber& rhs) {
     return lhs_frac_normalized == rhs_frac_normalized;
 }
 
+bool operator<(const RealNumber& lhs, const RealNumber& rhs) {
+    // -0.0 and 0.0 are equal, so one is not less than the other
+    bool lhs_is_zero = (lhs.integer == 0 && lhs.fractional == 0);
+    bool rhs_is_zero = (rhs.integer == 0 && rhs.fractional == 0);
+    if (lhs_is_zero && rhs_is_zero)
+        return false;
+
+    // if signs differ, the negative one is smaller
+    if (lhs.is_negative != rhs.is_negative)
+        return lhs.is_negative;
+
+    // same sign
+    // compare the magnitudes
+    bool is_abs_lhs_less = false;
+    if (lhs.integer != rhs.integer)
+        is_abs_lhs_less = lhs.integer < rhs.integer;
+    else {
+        int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
+        auto lhs_f = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
+        auto rhs_f = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+        if (lhs_f != rhs_f)
+            is_abs_lhs_less = lhs_f < rhs_f;
+    }
+
+    // if negative, the relationship is inverted (e.g., -5 < -3).
+    return lhs.is_negative ? !is_abs_lhs_less : is_abs_lhs_less;
+}
+
+bool operator<=(const RealNumber& lhs, const RealNumber& rhs) {
+    bool lhs_is_zero = (lhs.integer == 0 && lhs.fractional == 0);
+    bool rhs_is_zero = (rhs.integer == 0 && rhs.fractional == 0);
+    if (lhs_is_zero && rhs_is_zero)
+        return true;
+
+    // if signs differ, the negative one is smaller
+    if (lhs.is_negative != rhs.is_negative)
+        return lhs.is_negative;
+
+    // same sign
+    // compare the magnitudes
+    bool is_abs_lhs_less_or_equal = false;
+    if (lhs.integer != rhs.integer)
+        is_abs_lhs_less_or_equal = lhs.integer <= rhs.integer;
+    else {
+        int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
+        auto lhs_f = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
+        auto rhs_f = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+        if (lhs_f == rhs_f)
+            return true; // magnitudes are equal
+
+        is_abs_lhs_less_or_equal = lhs_f <= rhs_f;
+    }
+
+    // if negative, the relationship is inverted (e.g., -5 < -3).
+    return lhs.is_negative ? !is_abs_lhs_less_or_equal : is_abs_lhs_less_or_equal;
+}
+
+bool operator>(const RealNumber& lhs, const RealNumber& rhs) {
+    // -0.0 and 0.0 are equal, so one is not less than the other
+    bool lhs_is_zero = (lhs.integer == 0 && lhs.fractional == 0);
+    bool rhs_is_zero = (rhs.integer == 0 && rhs.fractional == 0);
+    if (lhs_is_zero && rhs_is_zero)
+        return false;
+
+    // if signs differ, the positive one is greater
+    if (lhs.is_negative != rhs.is_negative)
+        return !lhs.is_negative;
+
+    // same sign
+    // compare the magnitudes
+    bool is_abs_lhs_greater = false;
+    if (lhs.integer != rhs.integer)
+        is_abs_lhs_greater = lhs.integer > rhs.integer;
+    else {
+        int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
+        auto lhs_f = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
+        auto rhs_f = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+        if (lhs_f != rhs_f)
+            is_abs_lhs_greater = lhs_f > rhs_f;
+    }
+
+    // if negative, the relationship is inverted (e.g., -5 > -3).
+    return lhs.is_negative ? !is_abs_lhs_greater : is_abs_lhs_greater;
+}
+
+bool operator>=(const RealNumber& lhs, const RealNumber& rhs) {
+    bool lhs_is_zero = (lhs.integer == 0 && lhs.fractional == 0);
+    bool rhs_is_zero = (rhs.integer == 0 && rhs.fractional == 0);
+    if (lhs_is_zero && rhs_is_zero)
+        return true;
+
+    // if signs differ, the positive one is greater
+    if (lhs.is_negative != rhs.is_negative)
+        return !lhs.is_negative;
+
+    // same sign
+    // compare the magnitudes
+    bool is_abs_rhs_greater_or_equal = false;
+    if (lhs.integer != rhs.integer)
+        is_abs_rhs_greater_or_equal = lhs.integer >= rhs.integer;
+    else {
+        int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
+        auto lhs_f = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
+        auto rhs_f = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+        if (lhs_f == rhs_f)
+            return true; // magnitudes are equal
+        is_abs_rhs_greater_or_equal = lhs_f >= rhs_f;
+    }
+
+    // if negative, the relationship is inverted (e.g., -5 < -3).
+    return lhs.is_negative ? !is_abs_rhs_greater_or_equal : is_abs_rhs_greater_or_equal;
+}
+
 std::ostream& operator<<(std::ostream& os, const RealNumber& number) {
     os << to_string(number);
     return os;
@@ -295,3 +408,4 @@ RealNumber operator/(const RealNumber& lhs, const RealNumber& rhs) {
         .is_negative = res_is_negative
     };
 }
+

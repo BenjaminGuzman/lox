@@ -8,6 +8,30 @@ namespace lox {
 class Interpreter {
 private:
     /**
+     * Generic function that compiles binary operators defined only for @link RealNumber @endlink type operands
+     * e.g., '>', '<', '>=', '<='
+     * @tparam R return type for the operator
+     * @param astNode the AST node to be evaluated (itself should be the operator, its children should be the args for the operator)
+     * @param op the operator function
+     * @return the result of the operator
+     */
+    // FIXME BEGIN FIXME
+    template<typename R>
+    R compileOnlyRealNumberDefinedBinaryOperator(const std::unique_ptr<ASTNode>& astNode, std::function<R(const RealNumber&, const RealNumber&)> op) const {
+        auto lhs = this->resolveOrExecute(astNode->children[0]);
+        auto rhs = this->resolveOrExecute(astNode->children[1]);
+
+        return std::visit([&op]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+            if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+                return op(l, r);
+
+            throw std::runtime_error("Invalid operands for '>' binary operator."); // FIXME improve this
+        }, lhs, rhs);
+    }
+    bool compileOnlyRealNumberDefinedBinaryOperator(const std::unique_ptr<ASTNode>& astNode, std::function<bool(const RealNumber&, const RealNumber&)> op) const;
+    // FIXME END FIXME
+
+    /**
      * Resolves the value for a token
      *
      * This will only resolve the token in the following cases:
@@ -41,6 +65,11 @@ private:
     [[nodiscard]] underlying_t compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileParenthesis(const std::unique_ptr<ASTNode>& astNode) const;
 
+    [[nodiscard]] underlying_t compileGreaterThan(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileGreaterThanOrEqual(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileLessThan(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileLessThanOrEqual(const std::unique_ptr<ASTNode>& astNode) const;
+
     /**
      * Stores the token types to the function that should be responsible for compiling the token.
      */
@@ -49,10 +78,15 @@ private:
         {AST_ROOT,   [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileASTRoot(astNode);}},
         {PLUS,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePlus(astNode);}},
         {MINUS,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileMinus(astNode);}},
-        {STAR,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileStar(astNode);}},
+        {STAR,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileStar(astNode);}},
         {SLASH,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileSlash(astNode);}},
         {NOT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNot(astNode);}},
-        {LEFT_PAREN, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileParenthesis(astNode);}}
+        {LEFT_PAREN, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileParenthesis(astNode);}},
+
+        {GT,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileGreaterThan(astNode);}},
+        {GTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileGreaterThanOrEqual(astNode);}},
+        {LT,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLessThan(astNode);}},
+        {LTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLessThanOrEqual(astNode);}},
     };
 public:
     /**
