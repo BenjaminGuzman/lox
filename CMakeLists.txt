@@ -74,3 +74,10 @@ target_link_libraries(tests
 
 include(GoogleTest)
 gtest_discover_tests(tests)
+
+# This command runs the test executable immediately after it is built.
+# If the tests fail, the build will be marked as failed.
+#add_custom_command(TARGET tests POST_BUILD
+#        COMMAND $<TARGET_FILE:tests>
+#        COMMENT "Running tests after build..."
+#)
