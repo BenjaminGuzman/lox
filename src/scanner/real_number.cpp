@@ -401,10 +401,21 @@ RealNumber operator/(const RealNumber& lhs, const RealNumber& rhs) {
         res_is_negative = false;
     }
 
+    // Normalize fractional part by trimming trailing zeros
+    int final_n_fractional_digits = TARGET_FRACTIONAL_DIGITS;
+    if (res_fractional != 0) {
+        while (res_fractional % 10 == 0 && final_n_fractional_digits > 0) {
+            res_fractional /= 10;
+            final_n_fractional_digits--;
+        }
+    } else {
+        final_n_fractional_digits = 0; // If fractional part is 0, then 0 fractional digits
+    }
+
     return RealNumber{
         .integer = res_integer,
         .fractional = res_fractional,
-        .n_fractional_digits = TARGET_FRACTIONAL_DIGITS,
+        .n_fractional_digits = final_n_fractional_digits,
         .is_negative = res_is_negative
     };
 }
