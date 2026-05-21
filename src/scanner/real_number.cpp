@@ -136,6 +136,10 @@ bool operator==(const RealNumber& lhs, const RealNumber& rhs) {
     return lhs_frac_normalized == rhs_frac_normalized;
 }
 
+bool operator!=(const RealNumber& lhs, const RealNumber& rhs) {
+    return !(lhs == rhs);
+}
+
 bool operator<(const RealNumber& lhs, const RealNumber& rhs) {
     // -0.0 and 0.0 are equal, so one is not less than the other
     bool lhs_is_zero = (lhs.integer == 0 && lhs.fractional == 0);

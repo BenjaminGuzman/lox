@@ -28,3 +28,5 @@ false - false - true
 
 nil + "hola"
 true + "hola"
+
+156 == (89 + 67)

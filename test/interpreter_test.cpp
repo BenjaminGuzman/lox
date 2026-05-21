@@ -302,3 +302,63 @@ TEST(InterpreterIntegrationTest, AST_ROOT_MultipleStatements) {
     ASSERT_TRUE(std::holds_alternative<std::monostate>(result));
     // The actual output would be to stdout, which is harder to test directly here without mocking std::cout
 }
+
+TEST(InterpreterIntegrationTest, Equality) {
+    // Number equality
+    underlying_t result = interpret_expression("10 == 10");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_TRUE(get_value<bool>(result));
+
+    result = interpret_expression("10 == 10.5");
+    ASSERT_FALSE(get_value<bool>(result));
+
+    // String equality
+    result = interpret_expression("\"foo\" == \"foo\"");
+    ASSERT_TRUE(get_value<bool>(result));
+
+    result = interpret_expression("\"string\\' view\" == \"comparison\"");
+    ASSERT_FALSE(get_value<bool>(result));
+
+    result = interpret_expression("\"string\\\" view\" == \"string\\\" view\"");
+    ASSERT_TRUE(get_value<bool>(result));
+
+    result = interpret_expression("\"foo\" == \"bar\"");
+    ASSERT_FALSE(get_value<bool>(result));
+
+    // Boolean equality
+    result = interpret_expression("true == true");
+    ASSERT_TRUE(get_value<bool>(result));
+
+    result = interpret_expression("true == false");
+    ASSERT_FALSE(get_value<bool>(result));
+
+    // Nil equality
+    result = interpret_expression("nil == nil");
+    ASSERT_TRUE(get_value<bool>(result));
+
+    // Mixed types
+    result = interpret_expression("\"10\" == 10");
+    ASSERT_FALSE(get_value<bool>(result));
+}
+
+TEST(InterpreterIntegrationTest, Inequality) {
+    // Number inequality
+    underlying_t result = interpret_expression("10 != 11");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_TRUE(get_value<bool>(result));
+
+    result = interpret_expression("10 != 10");
+    ASSERT_FALSE(get_value<bool>(result));
+
+    // String inequality
+    result = interpret_expression("\"apple\" != \"orange\"");
+    ASSERT_TRUE(get_value<bool>(result));
+
+    // Boolean inequality
+    result = interpret_expression("true != false");
+    ASSERT_TRUE(get_value<bool>(result));
+
+    // Nil inequality
+    result = interpret_expression("nil != false");
+    ASSERT_TRUE(get_value<bool>(result));
+}

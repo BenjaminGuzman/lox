@@ -69,6 +69,8 @@ private:
     [[nodiscard]] underlying_t compileGreaterThanOrEqual(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileLessThan(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileLessThanOrEqual(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileEqualEqual(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileNotEqual(const std::unique_ptr<ASTNode>& astNode) const;
 
     /**
      * Stores the token types to the function that should be responsible for compiling the token.
@@ -87,6 +89,8 @@ private:
         {GTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileGreaterThanOrEqual(astNode);}},
         {LT,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLessThan(astNode);}},
         {LTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLessThanOrEqual(astNode);}},
+        {EQEQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqualEqual(astNode);}},
+        {NEQ,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNotEqual(astNode);}},
     };
 public:
     /**
