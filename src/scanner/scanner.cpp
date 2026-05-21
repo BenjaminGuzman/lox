@@ -4,6 +4,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <functional>
+#include <cstring>
 
 namespace lox {
 Scanner::Scanner(const std::string& filepath, bool is_filepath): filepath(filepath), stream({}) {
