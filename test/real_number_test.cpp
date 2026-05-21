@@ -71,6 +71,9 @@ TEST(RealNumberTest, ToStringConversion) {
 
     RealNumber num6(123, 4, 2, false); // 123.04
     ASSERT_EQ(to_string(num6), "123.04");
+
+    RealNumber num7(10, 2, 1, false); // 123.04
+    ASSERT_EQ(to_string(num7), "10.2");
 }
 
 TEST(RealNumberTest, ToStringAsExpectedByEvaluationSystem) {

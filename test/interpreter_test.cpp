@@ -219,6 +219,10 @@ TEST(InterpreterIntegrationTest, Division_Numbers) {
     ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(10, 2, 1, false));
 
+    result = interpret_expression("31 / 5");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(6, 2, 1, false));
+
     result = interpret_expression("-9.99 / 9.99");
     ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(1, 0, 0, true));

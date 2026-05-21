@@ -1,9 +1,8 @@
-#include "../../include/scanner.h"
+#include "scanner.h"
 
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
-#include <cstring>
 #include <functional>
 
 namespace lox {
