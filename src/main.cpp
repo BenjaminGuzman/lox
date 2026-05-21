@@ -55,11 +55,16 @@ int main(int argc, char *argv[]) {
         if (n_errors_parse >  0)
             return 65;
 
-        lox::Interpreter interpreter;
+        int n_errors_eval = 0;
+        lox::registerErrorF logErrors = [&n_errors_eval](std::string message, const Token& token) {
+            std::cerr << message << std::endl;
+            ++n_errors_eval;
+        };
+        lox::Interpreter interpreter(logErrors);
         interpreter.execute(ast.root);
 
-        // lox::Compiler compiler;
-        // compiler.compile(std::move(ast.root));
+        if (n_errors_eval)
+            return 70;
     } else {
         std::cerr << "Unknown command: " << command << std::endl;
         return 1;

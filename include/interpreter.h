@@ -5,8 +5,17 @@
 #include "parser.h"
 
 namespace lox {
+/**
+ * Function type to register an error during the execution of the program
+ * @param msg the message
+ * @param token the token at which the error was produced
+ */
+using registerErrorF = std::function<void(const std::string& msg, const Token& token)>;
+
 class Interpreter {
 private:
+    registerErrorF registerError;
+
     /**
      * Generic function that compiles binary operators defined only for @link RealNumber @endlink type operands
      * e.g., '>', '<', '>=', '<='
@@ -89,10 +98,23 @@ private:
         {GTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileGreaterThanOrEqual(astNode);}},
         {LT,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLessThan(astNode);}},
         {LTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLessThanOrEqual(astNode);}},
-        {EQEQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqualEqual(astNode);}},
+        {EQEQ,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqualEqual(astNode);}},
         {NEQ,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNotEqual(astNode);}},
     };
 public:
+    /**
+     *
+     * @param registerError function that gets called when an error during execution is found
+     */
+    Interpreter(registerErrorF registerError) : registerError(std::move(registerError)) {};
+
+    /**
+     * Default constructor with a default function to print errors to stderr
+     */
+    Interpreter() : Interpreter([](const std::string& msg, const Token& token) {
+        std::cerr << msg << std::endl;
+    }) {}
+
     /**
      * Executes/evaluates an ASTNode.
      * This will print to stdout the results of the evaluation.

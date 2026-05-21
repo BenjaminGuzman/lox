@@ -7,7 +7,7 @@ underlying_t Interpreter::compileStar(const std::unique_ptr<ASTNode>& astNode) c
     auto rhs = this->resolveOrExecute(astNode->children[1]);
 
     // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
-    return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+    return std::visit([this, &astNode]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
         // the only case were the * operator doesn't produce a number
         if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             return l * r;
@@ -16,8 +16,10 @@ underlying_t Interpreter::compileStar(const std::unique_ptr<ASTNode>& astNode) c
         constexpr bool is_r_string = std::is_same_v<std::decay_t<r_type>, std::string> || std::is_same_v<std::decay_t<r_type>, std::string_view>;
 
         // string * string -> incorrect!
-        if constexpr (is_l_string && is_r_string)
-            throw std::runtime_error("Invalid operands for '*' binary operator."); // FIXME improve this
+        if constexpr (is_l_string && is_r_string) {
+            this->registerError("Multiplying a string by a string is not a valid operation.", astNode->token);
+            return std::monostate();
+        }
 
         // string * number or number * string
         constexpr bool should_repeat_l_string = is_l_string && std::is_same_v<std::decay_t<r_type>, RealNumber>;
@@ -34,7 +36,7 @@ underlying_t Interpreter::compileStar(const std::unique_ptr<ASTNode>& astNode) c
             }
 
             if (multiplicator.is_negative || multiplicator.fractional != 0) {
-                std::cerr << ("Invalid operands for '*' binary operator (string repeat).") << std::endl; // FIXME improve this
+                this->registerError("Multiplying a string by non-integer is not a valid operation.", astNode->token);
                 return std::monostate();
             }
 
@@ -46,7 +48,8 @@ underlying_t Interpreter::compileStar(const std::unique_ptr<ASTNode>& astNode) c
             return res;
         }
 
-        throw std::runtime_error("Invalid operands for '*' binary operator."); // FIXME improve this
+        this->registerError("Operands must be numbers or strings.", astNode->token);
+        return std::monostate();
     }, lhs, rhs);
 }
 
@@ -56,12 +59,13 @@ underlying_t Interpreter::compileSlash(const std::unique_ptr<ASTNode>& astNode) 
     auto rhs = this->resolveOrExecute(astNode->children[1]);
 
     // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
-    return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+    return std::visit([this, &astNode]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
         // the only valid case for the / operator
         if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             return l / r;
 
-        throw std::runtime_error("Invalid operands for '/' binary operator."); // FIXME improve this
+        this->registerError("Operands must be numbers.", astNode->token);
+        return std::monostate();
     }, lhs, rhs);
 }
 
@@ -79,7 +83,7 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
     auto rhs = this->resolveOrExecute(astNode->children[1]);
 
     // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
-    return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+    return std::visit([this, &astNode]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
         // the only cases were the + operator doesn't produce a string
         if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             // both are numbers, number + number -> number
@@ -131,7 +135,8 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
         if constexpr (std::is_same_v<std::decay_t<l_type>, std::nullptr_t> && is_r_string)
             return "nil" + r_str;
 
-        throw std::runtime_error("Invalid operands for '+' binary operator."); // FIXME improve this
+        this->registerError("Operands must be numbers or strings.", astNode->token);
+        return std::monostate();
     }, lhs, rhs);
 }
 
@@ -143,13 +148,14 @@ underlying_t Interpreter::compileMinus(const std::unique_ptr<ASTNode>& astNode) 
     // compile the unary token, compile the - (something), e.g., - - - 123.5
     if (opType == UNARY) {
         auto res = this->resolveOrExecute(astNode->children[0]);
-        return std::visit([]<typename T>(T&& value) -> underlying_t {
+        return std::visit([this, &astNode]<typename T>(T&& value) -> underlying_t {
             if constexpr (std::is_same_v<std::decay_t<T>, RealNumber>) { // negate a number
                 const auto num = static_cast<RealNumber>(value);
                 return RealNumber{num.integer, num.fractional, num.n_fractional_digits, !num.is_negative};
             }
 
-            throw std::runtime_error("Invalid operands for '-' unary operator."); // FIXME improve this
+            this->registerError("Operand must be a number.", astNode->token);
+            return std::monostate();
         }, res);
     }
 
@@ -158,7 +164,7 @@ underlying_t Interpreter::compileMinus(const std::unique_ptr<ASTNode>& astNode) 
     auto rhs = this->resolveOrExecute(astNode->children[1]);
 
     // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
-    return std::visit([]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
+    return std::visit([this, &astNode]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
         if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             // both are numbers, number - number -> number
             return l - r;
@@ -172,7 +178,8 @@ underlying_t Interpreter::compileMinus(const std::unique_ptr<ASTNode>& astNode) 
             // bool - number = int(bool) - number
             return RealNumber{static_cast<u_long>(l), 0, 0} - r;
 
-        throw std::runtime_error("Invalid operands for '-' binary operator."); // FIXME improve this
+        this->registerError("Operands must be numbers or strings.", astNode->token);
+        return std::monostate();
     }, lhs, rhs);
 }
 };
