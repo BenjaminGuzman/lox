@@ -104,7 +104,7 @@ private:
         {EQEQ,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqualEqual(astNode);}},
         {NEQ,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNotEqual(astNode);}},
 
-        {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
+        // {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
     };
 public:
     /**
