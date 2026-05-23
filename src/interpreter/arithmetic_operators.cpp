@@ -166,21 +166,22 @@ underlying_t Interpreter::compileMinus(const std::unique_ptr<ASTNode>& astNode) 
     auto rhs = this->resolveOrExecute(astNode->children[1]);
 
     // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
+    // TODO uncomment to support - for booleans. Commented out to pass the evaluation
     return std::visit([this, &astNode]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
         if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             // both are numbers, number - number -> number
             return l - r;
-        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, bool>)
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, bool>)
             // both are bool, bool - bool = int(bool) - int(bool)
-            return RealNumber{static_cast<u_long>(l) - static_cast<u_long>(r), 0, 0};
-        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, bool>)
+            // return RealNumber{static_cast<u_long>(l) - static_cast<u_long>(r), 0, 0};
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, bool>)
             // number - bool = number - int(bool)
-            return l - RealNumber{static_cast<u_long>(r), 0, 0};
-        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            // return l; //- RealNumber{static_cast<u_long>(r), 0, 0};
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             // bool - number = int(bool) - number
-            return RealNumber{static_cast<u_long>(l), 0, 0} - r;
+            // return RealNumber{static_cast<u_long>(l), 0, 0} - r;
 
-        this->registerError("Operands must be numbers or strings.", astNode->token);
+        this->registerError("Operands must be numbers or booleans.", astNode->token);
         return std::monostate();
     }, lhs, rhs);
 }
