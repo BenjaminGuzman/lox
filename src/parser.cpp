@@ -230,6 +230,23 @@ int AST::build() const {
             parentNodes.push(parent->children.back().get());
             break;
         }
+        case PRINT:
+        case IF:
+        case FOR:
+        case WHILE: {
+            auto func_node = std::make_unique<ASTNode>(ASTNode{
+                .token = token,
+                .parent = parent,
+            });
+            parent->children.push_back(std::move(func_node)); // The tree itself should be the owner of all the nodes (hence the std::move)
+            func_node = nullptr;
+            parentNodes.push(parent->children.back().get());
+            break;
+        }
+        case SEMICOLON:
+            if (parentNodes.top()->token.type == PRINT) // print statement args end when the ';' is found
+                parentNodes.pop();
+            break;
         // these shouldn't go to the AST
         case UNTERMINATED_STRING:
         case UNRECOGNIZED:

@@ -62,3 +62,13 @@ TEST(ParserTest, HandlesComparison) {
     std::string result = parse_and_serialize("10 == 10 < 90");
     EXPECT_EQ(result, "(< (== 10.0 10.0) 90.0)");
 }
+
+TEST(ParserTest, PrintStatement) {
+    std::string result = parse_and_serialize("print \"hello\" + \"world\";");
+    EXPECT_EQ(result, "print(+ hello world)");
+}
+
+TEST(ParserTest, PrintExpression) {
+    std::string result = parse_and_serialize("print 1 + 2 * 3;");
+    EXPECT_EQ(result, "print(+ 1.0 (* 2.0 3.0))");
+}

@@ -39,6 +39,22 @@ underlying_t Interpreter::compileString(const std::unique_ptr<ASTNode>& astNode)
     return astNode->token.get_literal();
 }
 
+underlying_t Interpreter::compilePrint(const std::unique_ptr<ASTNode>& astNode) const {
+    for (const auto & child: astNode->children) {
+        std::visit([]<typename T>(T&& value) {
+            if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {
+                std::cout << "";
+            } else if constexpr (std::is_same_v<std::decay_t<T>, std::nullopt_t>) {
+                std::cout << "nil";
+            } else {
+                std::cout << value;
+            }
+        }, resolveOrExecute(child));
+    }
+    std::cout << std::endl;
+
+    return nullptr;
+}
 
 underlying_t Interpreter::compileNot(const std::unique_ptr<ASTNode>& astNode) const {
     return std::visit([]<typename T>(T&& value) -> underlying_t {

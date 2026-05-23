@@ -81,6 +81,8 @@ private:
     [[nodiscard]] underlying_t compileEqualEqual(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileNotEqual(const std::unique_ptr<ASTNode>& astNode) const;
 
+    [[nodiscard]] underlying_t compilePrint(const std::unique_ptr<ASTNode>& astNode) const;
+
     // TODO to be implemented
     [[nodiscard]] underlying_t compileEqual(const std::unique_ptr<ASTNode>& astNode);
 
@@ -103,6 +105,8 @@ private:
         {LTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLessThanOrEqual(astNode);}},
         {EQEQ,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqualEqual(astNode);}},
         {NEQ,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNotEqual(astNode);}},
+
+        {PRINT,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePrint(astNode);}},
 
         // {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
     };
