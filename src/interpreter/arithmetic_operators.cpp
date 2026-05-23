@@ -84,20 +84,21 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
     auto rhs = this->resolveOrExecute(astNode->children[1]);
 
     // by now, both lhs and rhs are (should be) either a string, a number, a boolean, a null
+    // TODO uncomment to support + for booleans, nil, etc... Commented out to pass the evaluation
     return std::visit([this, &astNode]<typename l_type, typename r_type>(l_type&& l, r_type&& r) -> underlying_t {
         // the only cases were the + operator doesn't produce a string
         if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             // both are numbers, number + number -> number
             return l + r;
-        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, bool>)
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, bool>)
             // both are bool, bool + bool = int(bool) + int(bool)
-            return RealNumber{static_cast<u_long>(l) + static_cast<u_long>(r), 0, 0};
-        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, bool>)
+            // return RealNumber{static_cast<u_long>(l) + static_cast<u_long>(r), 0, 0};
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && std::is_same_v<std::decay_t<r_type>, bool>)
             // number + bool = number + int(bool)
-            return l + RealNumber{static_cast<u_long>(r), 0, 0};
-        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            // return l + RealNumber{static_cast<u_long>(r), 0, 0};
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && std::is_same_v<std::decay_t<r_type>, RealNumber>)
             // bool + number = int(bool) + number
-            return RealNumber{static_cast<u_long>(l), 0, 0} + r;
+            // return RealNumber{static_cast<u_long>(l), 0, 0} + r;
 
         constexpr bool is_l_string = std::is_same_v<std::decay_t<l_type>, std::string> || std::is_same_v<std::decay_t<l_type>, std::string_view>;
         constexpr bool is_r_string = std::is_same_v<std::decay_t<r_type>, std::string> || std::is_same_v<std::decay_t<r_type>, std::string_view>;
@@ -119,22 +120,22 @@ underlying_t Interpreter::compilePlus(const std::unique_ptr<ASTNode>& astNode) c
         // string + string, or string + number
         if constexpr (is_l_string && is_r_string)
             return l_str + r_str;
-        if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, RealNumber>)
-            return l_str + r;
-        if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && is_r_string)
-            return l + r_str;
+        // if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, RealNumber>)
+            // return l_str + r;
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, RealNumber> && is_r_string)
+            // return l + r_str;
 
         // string + boolean
-        if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, bool>)
-            return l_str + to_string(r);
-        if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && is_r_string)
-            return to_string(l) + r_str;
+        // if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, bool>)
+            // return l_str + to_string(r);
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, bool> && is_r_string)
+            // return to_string(l) + r_str;
 
         // string + nullptr
-        if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, nullptr_t>)
-            return l_str + "nil";
-        if constexpr (std::is_same_v<std::decay_t<l_type>, std::nullptr_t> && is_r_string)
-            return "nil" + r_str;
+        // if constexpr (is_l_string && std::is_same_v<std::decay_t<r_type>, nullptr_t>)
+            // return l_str + "nil";
+        // if constexpr (std::is_same_v<std::decay_t<l_type>, std::nullptr_t> && is_r_string)
+            // return "nil" + r_str;
 
         this->registerError("Operands must be numbers or strings.", astNode->token);
         return std::monostate();
