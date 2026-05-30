@@ -13,3 +13,7 @@ print "36
 ";
 
 print "There should be an empty line above this.";
+
+print "the expression below is invalid";
+49 + "baz";
+print "this should not be printed";

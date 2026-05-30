@@ -98,6 +98,7 @@
     lox::registerErrorF logErrors = [&n_errors_eval](std::string message, const Token& token) {
         std::cerr << message << std::endl;
         ++n_errors_eval;
+        exit(70);
     };
     lox::Interpreter interpreter(logErrors);
     interpreter.strict_output_mode = true; // only print if print command was given
