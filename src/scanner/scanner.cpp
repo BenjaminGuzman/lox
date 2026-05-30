@@ -63,11 +63,11 @@ Token parse_string(std::istream& stream, const size_t line, const size_t col) {
             const auto& literal = lexeme.size() == literal_.size() + 2 ? "" : literal_;
             return Token{STRING, lexeme_buff.str(), literal, line, col};
         }
-        if (c == '\n') { // no multi-line strings supported now
-            const auto& s = literal_buff.str();
-            stream.putback(c); // the '\n' is not part of the string, so we need to put it back
-            return Token{UNTERMINATED_STRING, lexeme_buff.str(), s, line, col};
-        }
+        // if (c == '\n') { // no multi-line strings supported now
+            // const auto& s = literal_buff.str();
+            // stream.putback(c); // the '\n' is not part of the string, so we need to put it back
+            // return Token{UNTERMINATED_STRING, lexeme_buff.str(), s, line, col};
+        // }
 
         literal_buff << c;
     }

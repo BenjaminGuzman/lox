@@ -153,6 +153,23 @@ TEST(ScannerTest, HandlesUnrecognizedEscapedStrings) {
     EXPECT_EQ(std::get<std::string>(str_token.token.literal), "");
 }
 
+TEST(ScannerTest, HandlesMultiLineStrings) {
+    std::string multiline = R"("This
+is a
+multiline
+string")";
+    Scanner scanner(multiline, false);
+    Token token = scanner.next_token();
+    EXPECT_EQ(token.type, STRING) << "Expected STRING token, received " << to_string_as_expected_by_evaluation_system(token.type);
+
+    StringTokenView str_token(token);
+    EXPECT_EQ(str_token.literal(), multiline.substr(1, multiline.size() - 2) /*strip the quotes*/);
+    EXPECT_EQ(str_token.token.lexeme, multiline);
+
+    // since the lexeme = "literal", we should only store the lexeme
+    EXPECT_EQ(std::get<std::string>(str_token.token.literal), "");
+}
+
 TEST(ScannerTest, ScansIntegerNumbers) {
     Scanner scanner("12345", false);
     Token token = scanner.next_token();
