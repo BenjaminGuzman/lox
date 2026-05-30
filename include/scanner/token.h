@@ -149,7 +149,7 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
     {RETURN, NOT_OPERATOR},
     {SUPER, NOT_OPERATOR},
     {THIS, NOT_OPERATOR},
-    {VAR, NOT_OPERATOR},
+    {VAR, UNARY},
     {NIL, NOT_OPERATOR},
     {PRINT, NOT_OPERATOR},
     {UNRECOGNIZED, NOT_OPERATOR},

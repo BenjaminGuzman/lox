@@ -1,5 +1,7 @@
 #include "interpreter.h"
 
+#include <ranges>
+
 namespace lox {
 underlying_t Interpreter::resolveToken(const Token& token) const {
     switch (token.type) {
@@ -14,6 +16,12 @@ underlying_t Interpreter::resolveToken(const Token& token) const {
     case NIL:
         return nullptr;
     case IDENTIFIER: // TODO search in the symbol table
+        // search from the innermost scope (top of stack) to the global scope (bottom)
+        for (const auto& it : std::views::reverse(stack))
+            if (it.symbols.contains(token.lexeme))
+                return it.symbols.at(token.lexeme);
+        this->registerError("Undefined variable '" + token.lexeme + "'", token);
+        return std::monostate();
     default:
         return std::monostate{};
     }
@@ -24,6 +32,7 @@ underlying_t Interpreter::resolveOrExecute(const std::unique_ptr<ASTNode>& node)
 
     return std::visit([this, &node, &resolved_value]<typename T>(T&& value) {
         if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {
+            // monostate indicates the value is likely an expression as it may come from an =, *, -, etc...
             return this->execute(node);
         }
 

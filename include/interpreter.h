@@ -1,8 +1,10 @@
 #ifndef CODECRAFTERS_INTERPRETER_INTERPRETER_H
 #define CODECRAFTERS_INTERPRETER_INTERPRETER_H
 #include <memory>
+#include <vector>
 
 #include "parser.h"
+#include "interpreter/stackframe.h"
 
 namespace lox {
 /**
@@ -15,6 +17,19 @@ using registerErrorF = std::function<void(const std::string& msg, const Token& t
 class Interpreter {
 private:
     registerErrorF registerError;
+
+    /**
+     * The execution stack
+     */
+    std::vector<Stackframe> stack;
+
+    /**
+     *
+     * @return the stackframe at the top of the stack
+     */
+    Stackframe& stackTop() {
+        return stack.back();
+    }
 
     /**
      * Generic function that compiles binary operators defined only for @link RealNumber @endlink type operands
@@ -83,8 +98,8 @@ private:
 
     [[nodiscard]] underlying_t compilePrint(const std::unique_ptr<ASTNode>& astNode) const;
 
-    // TODO to be implemented
     [[nodiscard]] underlying_t compileEqual(const std::unique_ptr<ASTNode>& astNode);
+    [[nodiscard]] underlying_t compileVar(const std::unique_ptr<ASTNode>& astNode);
 
     /**
      * Stores the token types to the function that should be responsible for compiling the token.
@@ -108,7 +123,8 @@ private:
 
         {PRINT,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePrint(astNode);}},
 
-        // {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
+        {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
+        {VAR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
     };
 public:
     /**
@@ -122,7 +138,9 @@ public:
      *
      * @param registerError function that gets called when an error during execution is found
      */
-    Interpreter(registerErrorF registerError) : registerError(std::move(registerError)) {};
+    Interpreter(registerErrorF registerError) : registerError(std::move(registerError)) {
+        this->stack.emplace_back();
+    };
 
     /**
      * Default constructor with a default function to print errors to stderr

@@ -72,3 +72,18 @@ TEST(ParserTest, PrintExpression) {
     std::string result = parse_and_serialize("print 1 + 2 * 3;");
     EXPECT_EQ(result, "print(+ 1.0 (* 2.0 3.0))");
 }
+
+TEST(ParserTest, AssignmentExpression) {
+    std::string result = parse_and_serialize("a = 10;");
+    EXPECT_EQ(result, "(= a 10.0)");
+}
+
+TEST(ParserTest, VarAssignmentExpression) {
+    std::string result = parse_and_serialize("var a = 15;");
+    EXPECT_EQ(result, "(var (= a 15.0))");
+}
+
+TEST(ParserTest, VarExpression) {
+    std::string result = parse_and_serialize("var a;");
+    EXPECT_EQ(result, "(var a)");
+}

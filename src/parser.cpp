@@ -230,6 +230,7 @@ int AST::build() const {
             parentNodes.push(parent->children.back().get());
             break;
         }
+        case VAR:
         case PRINT:
         case IF:
         case FOR:
@@ -269,6 +270,20 @@ int AST::build() const {
             if (valid_binary_operand && valid_binary_operator) {
                 handle_binary_operators(token, parent, parentNodes);
                 break;
+            }
+
+            // handle assignment operator
+            // tree should look like (=) -> {identifier, value}
+            if (next.type == EQ) {
+                auto assignmentNode = std::make_unique<ASTNode>(ASTNode{
+                    .token = next,
+                    .parent = parent,
+                });
+                parent->children.push_back(std::move(assignmentNode));
+                assignmentNode = nullptr;
+                parentNodes.push(parent->children.back().get());
+                parent = parentNodes.top();
+                scanner.skip_next(); // skip the next token (=) as it has already been processed
             }
 
             auto node = std::make_unique<ASTNode>(ASTNode{

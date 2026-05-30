@@ -286,4 +286,9 @@ Token Scanner::peek_previous() const {
     auto& next_token = tokens.front();
     return next_token;
 }
+
+void Scanner::skip_next() {
+    tokens.pop_front(); // pop the previous token
+    tokens.push_back(_next_token()); // add the next (actually the next-next token) token
+}
 }

@@ -117,6 +117,11 @@ public:
      * @return the previous token
      */
     [[nodiscard]] Token peek_previous() const;
+
+    /**
+     * Skip the next token, i.e., call @link next_token() @endlink and ignore the result
+     */
+    void skip_next();
 };
 
 }

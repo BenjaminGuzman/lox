@@ -38,6 +38,7 @@ endif()
 set(INTERPRETER_SOURCES
         src/interpreter/interpreter.cpp
         src/interpreter/arithmetic_operators.cpp
+        src/interpreter/assignment_operators.cpp
         src/interpreter/comparison_operators.cpp)
 add_library(lox-interpreter STATIC ${INTERPRETER_SOURCES})
 target_include_directories(lox-interpreter PRIVATE include/)
