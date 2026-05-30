@@ -91,8 +91,6 @@
     lox::Scanner scanner(abs_filepath);
     lox::AST ast(scanner, false);
     int n_errors_parse = ast.build();
-    if (n_errors_parse > 0)
-        return 65;
 
     int n_errors_eval = 0;
     lox::registerErrorF logErrors = [&n_errors_eval](std::string message, const Token& token) {
@@ -104,8 +102,11 @@
     interpreter.strict_output_mode = true; // only print if print command was given
     auto _ = interpreter.execute(ast.root);
 
-    if (n_errors_eval)
+    if (n_errors_parse)
         return 65;
+
+    if (n_errors_eval)
+        return 70;
 
     return 0;
 }

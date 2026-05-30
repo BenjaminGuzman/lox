@@ -40,11 +40,6 @@ underlying_t Interpreter::compileString(const std::unique_ptr<ASTNode>& astNode)
 }
 
 underlying_t Interpreter::compilePrint(const std::unique_ptr<ASTNode>& astNode) const {
-    if (astNode->children.empty()) {
-        this->registerError("Print statements expect an expression", astNode->token);
-        return nullptr;
-    }
-
     for (const auto & child: astNode->children) {
         std::visit([]<typename T>(T&& value) {
             if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {

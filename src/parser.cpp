@@ -244,8 +244,14 @@ int AST::build() const {
             break;
         }
         case SEMICOLON:
-            if (parentNodes.top()->token.type == PRINT) // print statement args end when the ';' is found
+            if (parentNodes.top()->token.type == PRINT) {
+                // print statement args end when the ';' is found
+                if (parentNodes.top()->children.empty())
+                    // According to evaluation system: Print statements expect an expression,
+                    // i.e., print should have children
+                    ++n_errors;
                 parentNodes.pop();
+            }
             break;
         // these shouldn't go to the AST
         case UNTERMINATED_STRING:
