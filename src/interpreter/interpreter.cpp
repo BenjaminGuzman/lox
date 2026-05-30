@@ -53,7 +53,7 @@ underlying_t Interpreter::compilePrint(const std::unique_ptr<ASTNode>& astNode) 
         std::visit([]<typename T>(T&& value) {
             if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {
                 std::cout << "";
-            } else if constexpr (std::is_same_v<std::decay_t<T>, std::nullopt_t>) {
+            } else if constexpr (std::is_same_v<std::decay_t<T>, std::nullptr_t>) {
                 std::cout << "nil";
             } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
                 std::cout << to_string(value);

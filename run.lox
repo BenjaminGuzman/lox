@@ -2,6 +2,8 @@ var a = 10;
 var b;
 a = a * 2;
 b = 30;
+var c;
+print c;
 //print "value of a + b: " + (a + b);
 
 
