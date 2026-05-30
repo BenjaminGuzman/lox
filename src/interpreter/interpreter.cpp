@@ -40,12 +40,19 @@ underlying_t Interpreter::compileString(const std::unique_ptr<ASTNode>& astNode)
 }
 
 underlying_t Interpreter::compilePrint(const std::unique_ptr<ASTNode>& astNode) const {
+    if (astNode->children.empty()) {
+        this->registerError("Print statements expect an expression", astNode->token);
+        return nullptr;
+    }
+
     for (const auto & child: astNode->children) {
         std::visit([]<typename T>(T&& value) {
             if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {
                 std::cout << "";
             } else if constexpr (std::is_same_v<std::decay_t<T>, std::nullopt_t>) {
                 std::cout << "nil";
+            } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
+                std::cout << to_string(value);
             } else {
                 std::cout << value;
             }
@@ -75,17 +82,20 @@ underlying_t Interpreter::compileNot(const std::unique_ptr<ASTNode>& astNode) co
 underlying_t Interpreter::compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const {
     underlying_t res = std::monostate();
     for (auto&& node : astNode->children) {
-        std::visit([]<typename T>(T&& value) {
-            if constexpr (std::is_same_v<std::decay_t<T>, std::string>
-                || std::is_same_v<std::decay_t<T>, std::string_view>
-                || std::is_same_v<std::decay_t<T>, RealNumber>) {
-                std::cout << value << std::endl;
-            } else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>) {
-                std::cout << "nil" << std::endl;
-            } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
-                std::cout << to_string(value) << std::endl;
-            }
-        }, res = execute(node));
+        res = execute(node);
+        if (!this->strict_output_mode) {
+            std::visit([]<typename T>(T&& value) {
+                if constexpr (std::is_same_v<std::decay_t<T>, std::string>
+                    || std::is_same_v<std::decay_t<T>, std::string_view>
+                    || std::is_same_v<std::decay_t<T>, RealNumber>) {
+                    std::cout << value << std::endl;
+                } else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>) {
+                    std::cout << "nil" << std::endl;
+                } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
+                    std::cout << to_string(value) << std::endl;
+                }
+            }, res);
+        }
     }
 
     return std::visit([]<typename T>(T&& value) -> underlying_t {

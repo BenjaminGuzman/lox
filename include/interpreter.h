@@ -112,6 +112,13 @@ private:
     };
 public:
     /**
+     * Tells whether the output should be restricted to only print functions.
+     * If false and the interpreted command produces a value, i.e., it's not an assignment
+     * the value will be printed to stdout.
+     */
+    bool strict_output_mode;
+
+    /**
      *
      * @param registerError function that gets called when an error during execution is found
      */
