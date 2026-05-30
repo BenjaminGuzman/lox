@@ -377,3 +377,21 @@ TEST(InterpreterIntegrationTest, Inequality) {
     result = interpret_expression("nil != false");
     ASSERT_TRUE(get_value<bool>(result));
 }
+
+TEST(InterpreterIntegrationTest, VariableAssignment) {
+    underlying_t result = interpret_expression("var a = \"foo\"");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "foo");
+
+    result = interpret_expression("var b = 123; b = 456;");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(456, 0, 0, false));
+
+    result = interpret_expression("var c; c = \"updated\";");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "updated");
+
+    result = interpret_expression("var c;");
+    ASSERT_TRUE(std::holds_alternative<std::nullptr_t>(result));
+    ASSERT_EQ(get_value<std::nullptr_t>(result), nullptr);
+}

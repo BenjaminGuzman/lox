@@ -15,12 +15,12 @@ underlying_t Interpreter::resolveToken(const Token& token) const {
         return false;
     case NIL:
         return nullptr;
-    case IDENTIFIER: // TODO search in the symbol table
+    case IDENTIFIER:
         // search from the innermost scope (top of stack) to the global scope (bottom)
         for (const auto& it : std::views::reverse(stack))
             if (it.symbols.contains(token.lexeme))
                 return it.symbols.at(token.lexeme);
-        this->registerError("Undefined variable '" + token.lexeme + "'", token);
+        this->registerError("Undefined variable '" + token.lexeme + "'.", token);
         return std::monostate();
     default:
         return std::monostate{};
