@@ -396,6 +396,12 @@ TEST(InterpreterIntegrationTest, VariableAssignment) {
     ASSERT_EQ(get_value<std::nullptr_t>(result), nullptr);
 }
 
+TEST(InterpreterIntegrationTest, VariableAssignment2) {
+    auto result = interpret_expression("var age = 20; var isAdult = age >= 18");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+}
+
 TEST(InterpreterIntegrationTest, BlockScope) {
     // Test that a block returns the value of its last expression
     underlying_t result = interpret_expression("{ var a = 10; a + 5; }");
@@ -533,4 +539,20 @@ score;
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(80, 0, 0, false));
 }
 
+TEST(InterpreterIntegrationTest, MultipleElseIf2) {
+    underlying_t result = interpret_expression(R"(
+var stage = "unknown";
+var age = 50;
+if (age < 18) { stage = "child"; }
+if (age >= 18) { stage = "adult"; }
+print stage;
 
+var isAdult = age >= 18;
+var res;
+if (isAdult) { res = "eligible for voting: true"; }
+if (!isAdult) { res = "eligible for voting: false"; }
+res;
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "eligible for voting: true");
+}

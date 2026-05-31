@@ -301,7 +301,10 @@ uint16_t BasicToken<T>::op_priority() const {
     case LEFT_PAREN:
         return 30;
     default:
-        return 0;
+        return 5;
+    case EQ: // equal operator should have the less priority, e.g., in isAdult = x >= 15
+             //  x >= 15, should be executed first
+        return 1;
     }
 }
 

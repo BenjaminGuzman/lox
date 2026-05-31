@@ -93,6 +93,11 @@ TEST(ParserTest, VarExpression) {
     EXPECT_EQ(result, "(var a)");
 }
 
+TEST(ParserTest, VarExpression2) {
+    std::string result = parse_and_serialize("var isAdult = age >= 18;");
+    EXPECT_EQ(result, "(var (= isAdult (>= age 18.0)))");
+}
+
 TEST(ParserTest, BlockStatement) {
     std::string result = parse_and_serialize("{ var a = 10; print a; }");
     EXPECT_EQ(result, "({ (var (= a 10.0)) (print a))");
