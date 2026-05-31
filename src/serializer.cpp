@@ -37,6 +37,7 @@ bool operator_should_be_enclosed_by_paren(const TokenOpType type) {
     switch (type) {
     case UNARY:
     case BINARY:
+    case TERNARY:
     case MULTI:
         return true;
     default:

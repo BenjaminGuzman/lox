@@ -107,3 +107,53 @@ TEST(ParserTest, EmptyBlock) {
     std::string result = parse_and_serialize("{}");
     EXPECT_EQ(result, "({)");
 }
+
+TEST(ParserTest, IfStatement) {
+    std::string result = parse_and_serialize("if (true) print \"yes\";");
+    EXPECT_EQ(result, "(if (group true) (print yes))");
+}
+
+TEST(ParserTest, IfElseStatement) {
+    std::string result = parse_and_serialize(R"(
+if (x > 0)
+    print "pos";
+else
+    print "neg";
+)");
+    EXPECT_EQ(result, "(if (group (> x 0.0)) (print pos) (print neg))");
+}
+
+TEST(ParserTest, NestedIfStatement) {
+    std::string result = parse_and_serialize(R"(
+if (a)
+    if (b)
+        print "both";
+    else
+        print "a only";
+)");
+    EXPECT_EQ(result, "(if (group a) (if (group b) (print both) (print a only)))");
+}
+
+TEST(ParserTest, IfElseIfStatement) {
+    std::string result = parse_and_serialize(R"(
+if (a)
+    print "a";
+else if (b)
+    print "b";
+else
+    print "c";
+)");
+    EXPECT_EQ(result, "(if (group a) (print a) (if (group b) (print b) (print c)))");
+}
+
+TEST(ParserTest, MultipleElseIfStatements) {
+    std::string result = parse_and_serialize(R"(
+if (x == 1)
+    print 1;
+else if (x == 2)
+    print 2;
+else if (x == 3)
+    print 3;
+)");
+    EXPECT_EQ(result, "(if (group (== x 1.0)) (print 1.0) (if (group (== x 2.0)) (print 2.0) (if (group (== x 3.0)) (print 3.0))))");
+}

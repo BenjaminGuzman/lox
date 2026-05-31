@@ -430,3 +430,107 @@ TEST(InterpreterIntegrationTest, EmptyBlock) {
     underlying_t result = interpret_expression("{}");
     ASSERT_TRUE(std::holds_alternative<std::nullptr_t>(result));
 }
+
+TEST(InterpreterIntegrationTest, IfStatement) {
+    underlying_t result = interpret_expression(R"(
+var a = false;
+if (true)
+    a = true;
+a;
+)");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_TRUE(std::get<bool>(result));
+}
+
+TEST(InterpreterIntegrationTest, IfElseStatement) {
+    underlying_t result = interpret_expression(R"(
+var result = "";
+if (false) {
+    result = "then";
+} else {
+    result = "else";
+}
+result;
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "else");
+}
+
+TEST(InterpreterIntegrationTest, IfStatementTruthy) {
+    underlying_t result = interpret_expression(R"(
+var count = 0;
+if ("truthy string") count = 1;
+count;
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(1, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, NestedIfStatements) {
+    underlying_t result = interpret_expression(R"(
+var x = 0;
+if (true)
+    if (false)
+        x = 1;
+    else
+        x = 2;
+x;
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(2, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, IfElseIfElseStatement) {
+    underlying_t result = interpret_expression(R"(
+var x = 15;
+var result = "";
+if (x < 10) {
+    result = "small";
+} else if (x < 20) {
+    result = "medium";
+} else {
+    result = "large";
+}
+result;
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "medium");
+}
+
+TEST(InterpreterIntegrationTest, IfElseIfElseStatementLarge) {
+    underlying_t result = interpret_expression(R"(
+var x = 30;
+var result = "";
+if (x < 10) {
+    result = "small";
+} else if (x < 20) {
+    result = "medium";
+} else {
+    result = "large";
+}
+result;
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "large");
+}
+
+TEST(InterpreterIntegrationTest, MultipleElseIf) {
+    underlying_t result = interpret_expression(R"(
+var grade = "B";
+var score = 0;
+if (grade == "A") {
+    score = 90;
+} else if (grade == "B") {
+    score = 80;
+} else if (grade == "C") {
+    score = 70;
+} else {
+    score = 0;
+}
+score;
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(80, 0, 0, false));
+}
+
+

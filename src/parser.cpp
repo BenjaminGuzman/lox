@@ -204,6 +204,8 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
 int AST::build() const {
     int n_errors = 0;
 
+    ASTNode* lastIf; // points to the last node that was an if statement, this is used for "else" keyword
+
     std::stack<ASTNode*> parentNodes;
     parentNodes.push(root.get());
     while (true) {
@@ -219,7 +221,12 @@ int AST::build() const {
         case PLUS: // as binary operator is handled in the default case
         case NOT:
         case LEFT_BRACE:
-        case LEFT_PAREN: {
+        case LEFT_PAREN:
+        case VAR:
+        case PRINT:
+        case IF:
+        case FOR:
+        case WHILE: {
             auto operator_node = std::make_unique<ASTNode>(ASTNode{
                 .token = token,
                 .parent = parent,
@@ -229,22 +236,22 @@ int AST::build() const {
             parent->children.push_back(std::move(operator_node)); // The tree itself should be the owner of all the nodes (hence the std::move)
             operator_node = nullptr;
             parentNodes.push(parent->children.back().get());
+
+            if (token.type == IF) {
+                // for now let's assume it's just an if <condition> <exec-if-true>
+                // however, if we find an else later on, we'll make this ternary, if <condition> <if-true> <if-false>
+                lastIf = parentNodes.top();
+                lastIf->must_be_op_type = BINARY;
+            }
             break;
         }
-        case VAR:
-        case PRINT:
-        case IF:
-        case FOR:
-        case WHILE: {
-            auto func_node = std::make_unique<ASTNode>(ASTNode{
-                .token = token,
-                .parent = parent,
-            });
-            parent->children.push_back(std::move(func_node)); // The tree itself should be the owner of all the nodes (hence the std::move)
-            func_node = nullptr;
-            parentNodes.push(parent->children.back().get());
+        case ELSE:
+            // recover the if (which should have been closed as binary, i.e., if <condition> <exec-if-true>)
+            // and re-open it as ternary, i.e., if <condition> <exec-if-true> <exec-if-false>
+            lastIf->must_be_op_type = TERNARY;
+            parentNodes.push(lastIf);
+            parent = lastIf;
             break;
-        }
         case SEMICOLON:
             if (parentNodes.top()->token.type == PRINT) {
                 // print statement args end when the ';' is found
@@ -255,21 +262,6 @@ int AST::build() const {
                 parentNodes.pop();
             }
             break;
-        // case RIGHT_PAREN: // indicates the '(' (which should be the current parent) has been closed
-        //     if (parentNodes.top()->token.type != LEFT_PAREN) {
-        //         // if we reached a ')', it should mean the current parent is '(', if it's not, then there may be a
-        //         // syntax error somewhere...
-        //         std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
-        //                 << "Premature closure of parenthesis. Check statements inside. "
-        //                 << "Will try my best to recover from this, but there are no guarantees I'll recover successfully" << std::endl;
-        //         while (parentNodes.top()->token.type != LEFT_PAREN) {
-        //             // pop all the non-parenthesis nodes to "recover" from this
-        //             ++n_errors;
-        //             parentNodes.pop();
-        //         }
-        //     }
-        //     parentNodes.pop(); // the parent for the next node shouldn't be the current group
-        //     break;
         case RIGHT_BRACE: // indicates the '{' (which should be the current parent) has been closed
             if (parentNodes.top()->token.type != LEFT_BRACE) {
                 // if we reached a '}', it should mean the current parent is '{', if it's not, then there may be a
@@ -362,6 +354,12 @@ int AST::build() const {
                 break;
             case BINARY:
                 if (parentNodes.top()->children.size() == 2) {
+                    parentNodes.pop(); // both operands have been provided
+                    keep_poping = true;
+                }
+                break;
+            case TERNARY:
+                if (parentNodes.top()->children.size() == 3) {
                     parentNodes.pop(); // both operands have been provided
                     keep_poping = true;
                 }

@@ -2,6 +2,8 @@
 
 #include <ranges>
 
+#include "internal/utils.h"
+
 namespace lox {
 underlying_t Interpreter::resolveToken(const Token& token) const {
     switch (token.type) {
@@ -68,19 +70,7 @@ underlying_t Interpreter::compilePrint(const std::unique_ptr<ASTNode>& astNode) 
 }
 
 underlying_t Interpreter::compileNot(const std::unique_ptr<ASTNode>& astNode) const {
-    return std::visit([]<typename T>(T&& value) -> underlying_t {
-        // according to evaluation system:
-        // For truthyness and falsyness, we will follow the convention introduced in the book,
-        // where false and nil are falsy, and everything else is truthy.
-        // which is kinda weird, what about !0?
-        bool value_as_bool = true;
-        if constexpr (std::is_same_v<std::decay_t<T>, bool>)
-            value_as_bool = value;
-        else if constexpr (std::is_same_v<std::decay_t<T>, nullptr_t>)
-            value_as_bool = false;
-
-        return !value_as_bool;
-    }, this->resolveOrExecute(astNode->children[0]));
+    return !is_truthy(this->resolveOrExecute(astNode->children[0]));
 }
 
 underlying_t Interpreter::compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const {

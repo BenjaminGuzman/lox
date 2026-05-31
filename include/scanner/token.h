@@ -16,8 +16,10 @@ enum TokenOpType {
     NOT_OPERATOR, // token doesn't represent an operator
     UNARY, // token is a unary operator
     BINARY, // token is a binary operator
+    TERNARY, // token is a ternary operator
     UNARY_OR_BINARY, // token can either be a unary or binary operator
     BINARY_OR_NOT_OPERATOR, // token can either be a binary operator or not an operator at all
+    BINARY_OR_TERNARY,
     MULTI // token is a multi-token operator
 };
 
@@ -139,7 +141,7 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
     {AND, BINARY},
     {OR, BINARY},
     {CLASS, NOT_OPERATOR},
-    {IF, UNARY},
+    {IF, BINARY_OR_TERNARY},
     {ELSE, NOT_OPERATOR},
     {TRUE, NOT_OPERATOR},
     {FALSE, NOT_OPERATOR},
