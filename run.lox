@@ -1,8 +1,20 @@
+{
+    var bar = 11;
+    var world = 11;
+    var zet = 10;
+    {
+        zet = 20;
+        print zet;
+    }
+}
+
 var a = 10;
 var b;
 a = a * 2;
 b = 30;
 var c;
+print c;
+var c = b;
 print c;
 //print "value of a + b: " + (a + b);
 

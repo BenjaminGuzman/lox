@@ -1,5 +1,7 @@
 #include "interpreter.h"
 
+#include <ranges>
+
 namespace lox {
 underlying_t Interpreter::compileEqual(const std::unique_ptr<ASTNode>& astNode) {
     const std::string& identifier = astNode->children[0]->token.lexeme;
@@ -12,8 +14,15 @@ underlying_t Interpreter::compileEqual(const std::unique_ptr<ASTNode>& astNode) 
         return std::monostate();
     }
 
-    stackTop().symbols[identifier] = this->resolveOrExecute(astNode->children[1]);
-    return stackTop().symbols[identifier];
+    // get the scope where the variable was declared
+    for (auto& frame : std::views::reverse(stack))
+        if (frame.symbols.contains(identifier)) {
+            frame.symbols[identifier] = this->resolveOrExecute(astNode->children[1]);
+            return frame.symbols[identifier];
+        }
+
+    registerError("Undeclared variable '" + identifier + "'", astNode->children[0]->token);
+    return std::monostate();
 }
 
 underlying_t Interpreter::compileVar(const std::unique_ptr<ASTNode>& astNode) {
@@ -49,5 +58,15 @@ underlying_t Interpreter::compileVar(const std::unique_ptr<ASTNode>& astNode) {
 
     this->registerError("Invalid use of 'var' keyword", astNode->token);
     return std::monostate();
+}
+
+underlying_t Interpreter::compileLeftBrace(const std::unique_ptr<ASTNode>& astNode) {
+    // create a new stack frame, execute, and drop the stack frame
+    stack.emplace_back();
+    underlying_t ret = nullptr;
+    for (const auto& child: astNode->children)
+        ret = this->execute(child);
+    stack.pop_back();
+    return ret;
 }
 }

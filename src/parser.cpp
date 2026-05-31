@@ -218,6 +218,7 @@ int AST::build() const {
         case MINUS: // as binary operator is handled in the default case
         case PLUS: // as binary operator is handled in the default case
         case NOT:
+        case LEFT_BRACE:
         case LEFT_PAREN: {
             auto operator_node = std::make_unique<ASTNode>(ASTNode{
                 .token = token,
@@ -254,6 +255,36 @@ int AST::build() const {
                 parentNodes.pop();
             }
             break;
+        // case RIGHT_PAREN: // indicates the '(' (which should be the current parent) has been closed
+        //     if (parentNodes.top()->token.type != LEFT_PAREN) {
+        //         // if we reached a ')', it should mean the current parent is '(', if it's not, then there may be a
+        //         // syntax error somewhere...
+        //         std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
+        //                 << "Premature closure of parenthesis. Check statements inside. "
+        //                 << "Will try my best to recover from this, but there are no guarantees I'll recover successfully" << std::endl;
+        //         while (parentNodes.top()->token.type != LEFT_PAREN) {
+        //             // pop all the non-parenthesis nodes to "recover" from this
+        //             ++n_errors;
+        //             parentNodes.pop();
+        //         }
+        //     }
+        //     parentNodes.pop(); // the parent for the next node shouldn't be the current group
+        //     break;
+        case RIGHT_BRACE: // indicates the '{' (which should be the current parent) has been closed
+            if (parentNodes.top()->token.type != LEFT_BRACE) {
+                // if we reached a '}', it should mean the current parent is '{', if it's not, then there may be a
+                // syntax error somewhere...
+                std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
+                        << "Premature closure of block. Check statements inside. "
+                        << "Will try my best to recover from this, but there are no guarantees I'll recover successfully" << std::endl;
+                while (parentNodes.top()->token.type != LEFT_BRACE) {
+                    // pop all the non-braces nodes to "recover" from this
+                    ++n_errors;
+                    parentNodes.pop();
+                }
+            }
+            parentNodes.pop(); // the parent for the next node shouldn't be the current group
+            break;
         // these shouldn't go to the AST
         case UNTERMINATED_STRING:
         case UNRECOGNIZED:
@@ -286,14 +317,10 @@ int AST::build() const {
                 scanner.skip_next(); // skip the next token (=) as it has already been processed
             }
 
-            auto node = std::make_unique<ASTNode>(ASTNode{
-                .token = token,
-                .parent = parent,
-            });
-            parent->children.push_back(std::move(node));
-            node = nullptr;
-
             switch (token.type) {
+            // handling the closing of parenthesis here is needed 'cause the group may be used as arg for a binary
+            // operation, e.g., (10 - 4) * 2, and we need to handle that, the group should be child of *
+            // that's why we can't put this in the switch above
             case RIGHT_PAREN: // indicates the '(' (which should be the current parent) has been closed
                 if (parentNodes.top()->token.type != LEFT_PAREN) {
                     // if we reached a ')', it should mean the current parent is '(', if it's not, then there may be a
@@ -309,7 +336,16 @@ int AST::build() const {
                 }
                 parentNodes.pop(); // the parent for the next node shouldn't be the current group
                 break;
-            default: break;
+            default:
+                // current token is likely the (missing) argument of an operator,
+                // just push it so that the parent (the operator) gets completed
+                auto node = std::make_unique<ASTNode>(ASTNode{
+                    .token = token,
+                    .parent = parent,
+                });
+                parent->children.push_back(std::move(node));
+                node = nullptr;
+                break;
             }
         }
 
@@ -343,6 +379,8 @@ int AST::build() const {
         std::string message;
         if (incomplete->token.type == LEFT_PAREN)
             message = "Unclosed parenthesis '('";
+        else if (incomplete->token.type == LEFT_BRACE)
+            message = "Unclosed brace '{'";
         else if (incomplete->op_type() == BINARY && incomplete->children.size() < 2)
             message = "Operator '" + incomplete->token.lexeme + "' is missing its right-hand side operand";
         else if (incomplete->op_type() == UNARY && incomplete->children.empty())

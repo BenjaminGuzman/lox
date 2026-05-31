@@ -51,6 +51,11 @@ TEST(ParserTest, HandlesGrouping) {
     EXPECT_EQ(result, "(* (group (- 10.0 4.0)) 2.0)");
 }
 
+TEST(ParserTest, HandlesGrouping2) {
+    std::string result = parse_and_serialize("(10 - 4)");
+    EXPECT_EQ(result, "(group (- 10.0 4.0))");
+}
+
 TEST(ParserTest, HandlesUnary) {
     // -4 * 10 -> (* (- 4) 10)
     std::string result = parse_and_serialize("-4 * 10");
@@ -65,12 +70,12 @@ TEST(ParserTest, HandlesComparison) {
 
 TEST(ParserTest, PrintStatement) {
     std::string result = parse_and_serialize("print \"hello\" + \"world\";");
-    EXPECT_EQ(result, "print(+ hello world)");
+    EXPECT_EQ(result, "(print (+ hello world))");
 }
 
 TEST(ParserTest, PrintExpression) {
     std::string result = parse_and_serialize("print 1 + 2 * 3;");
-    EXPECT_EQ(result, "print(+ 1.0 (* 2.0 3.0))");
+    EXPECT_EQ(result, "(print (+ 1.0 (* 2.0 3.0)))");
 }
 
 TEST(ParserTest, AssignmentExpression) {
@@ -86,4 +91,19 @@ TEST(ParserTest, VarAssignmentExpression) {
 TEST(ParserTest, VarExpression) {
     std::string result = parse_and_serialize("var a;");
     EXPECT_EQ(result, "(var a)");
+}
+
+TEST(ParserTest, BlockStatement) {
+    std::string result = parse_and_serialize("{ var a = 10; print a; }");
+    EXPECT_EQ(result, "({ (var (= a 10.0)) (print a))");
+}
+
+TEST(ParserTest, NestedBlocks) {
+    std::string result = parse_and_serialize("{ var a = 1; { var a = 2; print a; } print a; }");
+    EXPECT_EQ(result, "({ (var (= a 1.0)) ({ (var (= a 2.0)) (print a)) (print a))");
+}
+
+TEST(ParserTest, EmptyBlock) {
+    std::string result = parse_and_serialize("{}");
+    EXPECT_EQ(result, "({)");
 }

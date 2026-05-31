@@ -98,8 +98,10 @@ private:
 
     [[nodiscard]] underlying_t compilePrint(const std::unique_ptr<ASTNode>& astNode) const;
 
+    // these functions modify the state (namely, the stack) of the interpreter
     [[nodiscard]] underlying_t compileEqual(const std::unique_ptr<ASTNode>& astNode);
     [[nodiscard]] underlying_t compileVar(const std::unique_ptr<ASTNode>& astNode);
+    [[nodiscard]] underlying_t compileLeftBrace(const std::unique_ptr<ASTNode>& astNode);
 
     /**
      * Stores the token types to the function that should be responsible for compiling the token.
@@ -125,6 +127,7 @@ private:
 
         {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
         {VAR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {LEFT_BRACE, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
     };
 public:
     /**
@@ -132,7 +135,7 @@ public:
      * If false and the interpreted command produces a value, i.e., it's not an assignment
      * the value will be printed to stdout.
      */
-    bool strict_output_mode;
+    bool strict_output_mode = false;
 
     /**
      *

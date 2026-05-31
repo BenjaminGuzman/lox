@@ -9,14 +9,27 @@
 #include "parser.h"
 #include "scanner.h"
 #include "serializer.h"
+#include "internal/utils.h"
 
-[[nodiscard]] int tokenize(int argc, char** argv) {
+/**
+ * Validates the arguments are 3: the program name, the command, and the file to be used by the command
+ * e.g., "program tokenize file-to-tokenize.lox"
+ * @return the third argument, which must be a filename
+ */
+std::string validate_args_and_get_file(int argc, const char** argv, const std::string& command) {
     if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " tokenize <filename>" << std::endl;
-        return 1;
+        std::cerr << "Usage: " << argv[0] << " " << command << " <filename>" << std::endl;
+        return "";
     }
 
-    std::string filepath = argv[2];
+    return argv[2];
+}
+
+[[nodiscard]] int tokenize(int argc, const char** argv) {
+    std::string filepath = validate_args_and_get_file(argc, argv, "tokenize");
+    if (filepath.empty())
+        return 1;
+
     auto abs_filepath = std::filesystem::canonical(filepath);
 
     lox::Scanner scanner(abs_filepath);
@@ -27,13 +40,11 @@
     return 0;
 }
 
-[[nodiscard]] int parse(int argc, char** argv) {
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " parse <filename>" << std::endl;
+[[nodiscard]] int parse(int argc, const char** argv) {
+    std::string filepath = validate_args_and_get_file(argc, argv, "parse");
+    if (filepath.empty())
         return 1;
-    }
 
-    std::string filepath = argv[2];
     auto abs_filepath = std::filesystem::canonical(filepath);
 
     lox::Scanner scanner(abs_filepath);
@@ -49,13 +60,11 @@
     return 0;
 }
 
-[[nodiscard]] int evaluate(int argc, char** argv) {
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " evaluate <filename>" << std::endl;
+[[nodiscard]] int evaluate(int argc, const char** argv) {
+    std::string filepath = validate_args_and_get_file(argc, argv, "evaluate");
+    if (filepath.empty())
         return 1;
-    }
 
-    std::string filepath = argv[2];
     auto abs_filepath = std::filesystem::canonical(filepath);
 
     lox::Scanner scanner(abs_filepath);
@@ -65,8 +74,8 @@
         return 65;
 
     int n_errors_eval = 0;
-    lox::registerErrorF logErrors = [&n_errors_eval](std::string message, const Token& token) {
-        std::cerr << message << std::endl;
+    lox::registerErrorF logErrors = [&n_errors_eval, &abs_filepath](std::string message, const Token& token) {
+        std::cerr << lox::error_in_file_prefix(abs_filepath, token.line, token.col) << message << std::endl;
         ++n_errors_eval;
     };
     lox::Interpreter interpreter(logErrors);
@@ -79,13 +88,11 @@
     return 0;
 }
 
-[[nodiscard]] int run(int argc, char** argv) {
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " run <filename>" << std::endl;
+[[nodiscard]] int run(int argc, const char** argv) {
+    std::string filepath = validate_args_and_get_file(argc, argv, "run");
+    if (filepath.empty())
         return 1;
-    }
 
-    std::string filepath = argv[2];
     auto abs_filepath = std::filesystem::canonical(filepath);
 
     lox::Scanner scanner(abs_filepath);
@@ -93,8 +100,8 @@
     int n_errors_parse = ast.build();
 
     int n_errors_eval = 0;
-    lox::registerErrorF logErrors = [&n_errors_eval](std::string message, const Token& token) {
-        std::cerr << message << std::endl;
+    lox::registerErrorF logErrors = [&n_errors_eval, &abs_filepath](std::string message, const Token& token) {
+        std::cerr << lox::error_in_file_prefix(abs_filepath, token.line, token.col) << message << std::endl;
         ++n_errors_eval;
         exit(70);
     };
@@ -111,14 +118,14 @@
     return 0;
 }
 
-const std::unordered_map<std::string, std::function<int(int, char**)>> COMMANDS = {
+const std::unordered_map<std::string, std::function<int(int, const char**)>> COMMANDS = {
     {"tokenize", tokenize},
     {"parse", parse},
     {"evaluate", evaluate},
     {"run", run}
 };
 
-int main(int argc, char** argv) {
+int main(int argc, const char** argv) {
     // Disable output buffering
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;

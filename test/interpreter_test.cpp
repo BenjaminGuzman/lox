@@ -395,3 +395,38 @@ TEST(InterpreterIntegrationTest, VariableAssignment) {
     ASSERT_TRUE(std::holds_alternative<std::nullptr_t>(result));
     ASSERT_EQ(get_value<std::nullptr_t>(result), nullptr);
 }
+
+TEST(InterpreterIntegrationTest, BlockScope) {
+    // Test that a block returns the value of its last expression
+    underlying_t result = interpret_expression("{ var a = 10; a + 5; }");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(15, 0, 0, false));
+
+    // Test nested blocks and shadowing
+    underlying_t result_shadow = interpret_expression(
+        "var a = \"outer\";"
+        "{"
+        "  var a = \"inner\";"
+        "}"
+        "a;"
+    );
+    ASSERT_TRUE(std::holds_alternative<std::string>(result_shadow));
+    ASSERT_EQ(get_value<std::string>(result_shadow), "outer");
+
+    // Test block updating outer scope variable
+    underlying_t result_update = interpret_expression(
+        "var x = 10;"
+        "{"
+        "  x = 20;"
+        "}"
+        "x;"
+    );
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result_update));
+    ASSERT_EQ(get_value<RealNumber>(result_update), RealNumber(20, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, EmptyBlock) {
+    // An empty block should return nil (monostate/nullptr)
+    underlying_t result = interpret_expression("{}");
+    ASSERT_TRUE(std::holds_alternative<std::nullptr_t>(result));
+}
