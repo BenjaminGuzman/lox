@@ -99,6 +99,9 @@ std::string validate_args_and_get_file(int argc, const char** argv, const std::s
     lox::AST ast(scanner, false);
     int n_errors_parse = ast.build();
 
+    if (n_errors_parse)
+        return 65;
+
     int n_errors_eval = 0;
     lox::registerErrorF logErrors = [&n_errors_eval, &abs_filepath](std::string message, const Token& token) {
         std::cerr << lox::error_in_file_prefix(abs_filepath, token.line, token.col) << message << std::endl;
@@ -108,9 +111,6 @@ std::string validate_args_and_get_file(int argc, const char** argv, const std::s
     lox::Interpreter interpreter(logErrors);
     interpreter.strict_output_mode = true; // only print if print command was given
     auto _ = interpreter.execute(ast.root);
-
-    if (n_errors_parse)
-        return 65;
 
     if (n_errors_eval)
         return 70;
