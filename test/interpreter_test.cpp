@@ -598,8 +598,8 @@ TEST(InterpreterIntegrationTest, AndOrKeywords) {
     ASSERT_EQ(get_value<bool>(result), true);
 
     result = interpret_expression("false or \"truthy\"");
-    ASSERT_TRUE(std::holds_alternative<bool>(result));
-    ASSERT_EQ(get_value<bool>(result), true);
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "truthy");
 
     result = interpret_expression("true or \"not evaluated\"");
     ASSERT_TRUE(std::holds_alternative<bool>(result));
@@ -610,16 +610,15 @@ TEST(InterpreterIntegrationTest, AndOrKeywords) {
     ASSERT_FALSE(get_value<bool>(result));
 
     result = interpret_expression("\"first\" and \"second\"");
-    ASSERT_TRUE(std::holds_alternative<bool>(result));
-    ASSERT_EQ(get_value<bool>(result), true);
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "second");
 
     result = interpret_expression("nil or 123");
-    ASSERT_TRUE(std::holds_alternative<bool>(result));
-    ASSERT_EQ(get_value<bool>(result), true);
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(123, 0, 0, false));
 
     result = interpret_expression("123 and nil");
-    ASSERT_TRUE(std::holds_alternative<bool>(result));
-    ASSERT_EQ(get_value<bool>(result), false);
+    ASSERT_TRUE(std::holds_alternative<std::nullptr_t>(result));
 
     result = interpret_expression("false or false or true or false");
     ASSERT_TRUE(std::holds_alternative<bool>(result));
@@ -629,4 +628,16 @@ TEST(InterpreterIntegrationTest, AndOrKeywords) {
     ASSERT_TRUE(std::holds_alternative<bool>(result));
     ASSERT_FALSE(get_value<bool>(result));
 
+
+    result = interpret_expression("false and 1");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_FALSE(get_value<bool>(result));
+
+    result = interpret_expression("true and 1");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(1, 0, 0, false));
+
+    result = interpret_expression("23 and \"hello\" and false");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), false);
 }

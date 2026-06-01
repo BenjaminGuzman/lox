@@ -10,10 +10,13 @@ underlying_t Interpreter::compileOr(const std::unique_ptr<ASTNode> &astNode) con
 
     auto lhs = this->resolveOrExecute(astNode->children[0]);
     if (is_truthy(lhs)) // use short-circuit operation, if lhs is true, ignore rhs, true or whatever = true
-        return true;
+        return lhs;
 
     auto rhs = this->resolveOrExecute(astNode->children[1]);
-    return is_truthy(rhs);
+    return rhs;
+    // if (is_truthy(rhs))
+        // return rhs;
+    // return false;
 }
 
 underlying_t Interpreter::compileAnd(const std::unique_ptr<ASTNode> &astNode) const {
@@ -24,9 +27,12 @@ underlying_t Interpreter::compileAnd(const std::unique_ptr<ASTNode> &astNode) co
 
     auto lhs = this->resolveOrExecute(astNode->children[0]);
     if (is_falsy(lhs)) // use short-circuit operation, if lhs is false, ignore rhs, false and whatever = false
-        return false;
+        return lhs;
 
     auto rhs = this->resolveOrExecute(astNode->children[1]);
-    return is_truthy(rhs);
+    return rhs;
+    // if (is_truthy(rhs))
+        // return rhs;
+    // return false;
 }
 };
