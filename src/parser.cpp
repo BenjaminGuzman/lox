@@ -115,7 +115,7 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
         .must_be_op_type = BINARY
     });
 
-    if (parent->op_type() == BINARY && (parent->token.is_arithmetic_operator() || parent->token.is_comparison_operator())) {
+    if (parent->op_type() == BINARY && (parent->token.is_arithmetic_operator() || parent->token.is_comparison_operator() || parent->token.is_logical_operator())) {
         if (parent->token.op_priority() >= operator_node->token.op_priority()) {
             // complete the binary expression
             if (parent->children.size() < 2) {
@@ -362,7 +362,7 @@ int AST::build() const {
             // The core logic handles operator precedence by rotating nodes in the AST.
             auto next = scanner.peek_next();
             bool valid_binary_operand = token.can_be_arithmetic_operand() || token.can_be_comparison_operand();
-            bool valid_binary_operator = next.is_arithmetic_operator() || next.is_comparison_operator();
+            bool valid_binary_operator = next.is_arithmetic_operator() || next.is_comparison_operator() || next.is_logical_operator();
             if (valid_binary_operand && valid_binary_operator) {
                 handle_binary_operators(token, parent, parentNodes);
                 break;

@@ -212,6 +212,9 @@ public:
     [[nodiscard]] bool can_be_comparison_operand() const;
     [[nodiscard]] bool is_comparison_operator() const;
 
+    [[nodiscard]] bool can_be_logical_operand() const;
+    [[nodiscard]] bool is_logical_operator() const;
+
     /**
      *
      * @return the operator priority, the higher the value, the higher the priority
@@ -290,6 +293,22 @@ bool BasicToken<T>::is_comparison_operator() const {
 }
 
 template<typename T>
+bool BasicToken<T>::can_be_logical_operand() const {
+    return can_be_arithmetic_operand();
+}
+
+template<typename T>
+bool BasicToken<T>::is_logical_operator() const {
+    switch (type) {
+    case OR:
+    case AND:
+        return true;
+    default:
+        return false;
+    }
+}
+
+template<typename T>
 uint16_t BasicToken<T>::op_priority() const {
     switch (type) {
     case PLUS:
@@ -302,6 +321,10 @@ uint16_t BasicToken<T>::op_priority() const {
         return 30;
     default:
         return 5;
+    case AND:
+        return 3;
+    case OR:
+        return 2;
     case EQ: // equal operator should have the less priority, e.g., in isAdult = x >= 15
              //  x >= 15, should be executed first
         return 1;

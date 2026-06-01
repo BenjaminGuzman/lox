@@ -103,7 +103,10 @@ private:
     [[nodiscard]] underlying_t compileVar(const std::unique_ptr<ASTNode>& astNode);
     [[nodiscard]] underlying_t compileLeftBrace(const std::unique_ptr<ASTNode>& astNode);
 
-    [[nodiscard]] underlying_t compileIf(const std::unique_ptr<ASTNode>& ast_node) const;
+    [[nodiscard]] underlying_t compileIf(const std::unique_ptr<ASTNode>& astNode) const;
+
+    [[nodiscard]] underlying_t compileOr(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileAnd(const std::unique_ptr<ASTNode>& astNode) const;
 
     /**
      * Stores the token types to the function that should be responsible for compiling the token.
@@ -132,6 +135,9 @@ private:
         {LEFT_BRACE, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
 
         {IF,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},
+
+        {OR,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileOr(astNode);}},
+        {AND,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileAnd(astNode);}},
     };
 public:
     /**

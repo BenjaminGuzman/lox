@@ -210,3 +210,17 @@ if (age < 18) {
 )");
     EXPECT_EQ(result, "(var (= stage unknown))(var (= age 29.0))(if (group (< age 18.0)) ({ (if (group (< age 13.0)) (= stage child) (if (group (< age 16.0)) (= stage young teenager) (= stage teenager)))) (if (group (< age 65.0)) ({ (if (group (< age 30.0)) (= stage young adult) (if (group (< age 50.0)) (= stage adult) (= stage middle-aged adult)))) (= stage senior)))");
 }
+
+TEST(ParserTest, OrKeyword) {
+    std::string result = parse_and_serialize(R"(
+var x = 1 < 2 or 1 == 2 or (20 * 30 < 30) or true
+)");
+    EXPECT_EQ(result, "(var (= x (or (or (or (< 1.0 2.0) (== 1.0 2.0)) (group (< (* 20.0 30.0) 30.0))) true)))");
+}
+
+TEST(ParserTest, OrAndKeyword) {
+    std::string result = parse_and_serialize(R"(
+var x = 1 < 2 or 1 == 2 and 20 * 30 < 30 or true and false
+)");
+    EXPECT_EQ(result, "(var (= x (or (or (< 1.0 2.0) (and (== 1.0 2.0) (< (* 20.0 30.0) 30.0))) (and true false))))");
+}

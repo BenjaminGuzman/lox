@@ -488,8 +488,8 @@ x;
 
 TEST(InterpreterIntegrationTest, NestedIfStatements2) {
     underlying_t result = interpret_expression(R"(
-if (true)
-    if (true)
+if true
+    if true
         var x = "nested true";
 x;
 )");
@@ -501,9 +501,9 @@ TEST(InterpreterIntegrationTest, IfElseIfElseStatement) {
     underlying_t result = interpret_expression(R"(
 var x = 15;
 var result = "";
-if (x < 10) {
+if x < 10 {
     result = "small";
-} else if (x < 20) {
+} else if x < 20 {
     result = "medium";
 } else {
     result = "large";
@@ -586,4 +586,47 @@ stage;
 )");
     ASSERT_TRUE(std::holds_alternative<std::string>(result));
     ASSERT_EQ(get_value<std::string>(result), "young adult");
+}
+
+TEST(InterpreterIntegrationTest, AndOrKeywords) {
+    underlying_t result = interpret_expression("false and true and 10 == 10 or false");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), false);
+
+    result = interpret_expression("true and true and 10 == 10 or false");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("false or \"truthy\"");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("true or \"not evaluated\"");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_TRUE(get_value<bool>(result));
+
+    result = interpret_expression("false and \"not evaluated\"");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_FALSE(get_value<bool>(result));
+
+    result = interpret_expression("\"first\" and \"second\"");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("nil or 123");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), true);
+
+    result = interpret_expression("123 and nil");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_EQ(get_value<bool>(result), false);
+
+    result = interpret_expression("false or false or true or false");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_TRUE(get_value<bool>(result));
+
+    result = interpret_expression("true and true and false and true");
+    ASSERT_TRUE(std::holds_alternative<bool>(result));
+    ASSERT_FALSE(get_value<bool>(result));
+
 }
