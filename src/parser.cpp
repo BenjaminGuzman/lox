@@ -201,18 +201,63 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
     parentNodes.push(parent->children.back().get());
 }
 
+/**
+ * Pops from the stack all those operators whose operands have been provided,
+ * e.g., if there is a binary operator in the stack that has 2 children, then it will be popped
+ * @param parentNodes the stack containing the parent nodes
+ * @param ifToBeCompleted the if that may be completed
+ */
+void popCompleteNodes(std::stack<ASTNode*>& parentNodes, ASTNode** ifToBeCompleted) {
+    // pop from the stack all those operators whose operands have been provided
+    bool keep_poping = true;
+    while (!parentNodes.empty() && keep_poping) {
+        keep_poping = false;
+        switch (parentNodes.top()->op_type()) {
+        case UNARY: // operand has just been added in lines above
+            if (parentNodes.top()->children.size() == 1) {
+                parentNodes.pop(); // operand has been provided
+                keep_poping = true;
+            }
+            break;
+        case BINARY:
+            if (parentNodes.top()->children.size() == 2 && *ifToBeCompleted == nullptr) {
+                // if ifToBeCompleted != nullptr, it means that there is an if waiting to be completed
+                //  and we cannot pop elements from the stack yet, as
+                //  the "complete" elements in the stack may also be if statements waiting to be completed
+                //  those statements must wait for the current if statement to be completed.
+                // if those elements are not ifs, they'll be popped anyway, after the if is completed
+                //  or it was found that it couldn't be completed due to a missing 'else'
+                if (parentNodes.top()->token.type == IF) {
+                    // if it's an if, which is complete as a binary operator, then it's a candidate
+                    //  to be completed as a ternary operator, if it's followed by else (ignoring } and ;)
+                    *ifToBeCompleted = parentNodes.top(); // note that there is no use-after-free issues here as it's a pointer
+                }
+                parentNodes.pop(); // both operands have been provided
+                keep_poping = true;
+            }
+            break;
+        case TERNARY:
+            if (parentNodes.top()->children.size() == 3) {
+                parentNodes.pop(); // both operands have been provided
+                keep_poping = true;
+            }
+            break;
+        default:{};
+        }
+    }
+}
+
 int AST::build() const {
     int n_errors = 0;
 
     // points to the node that is an if statement pending to be completed as ternary, this is used for the "else" keyword
     ASTNode* ifToBeCompleted = nullptr;
+    bool keep_consuming_tokens = true;
 
     std::stack<ASTNode*> parentNodes;
     parentNodes.push(root.get());
-    while (true) {
+    while (keep_consuming_tokens) {
         Token token = scanner.next_token();
-        if (token.type == EOF_TOKEN)
-            break;
 
         switch (token.type) {
         case SEMICOLON:
@@ -223,7 +268,13 @@ int AST::build() const {
             // if there was an if that was a complete binary operator, i.e., if <condition> <exec-if-true>
             //  and it was meant to be completed as a ternary operator, i.e., if <condition> <if-true> <if-false>
             //  it can only be completed iff between the if and the 'else' is nothing else but ; and }
-            ifToBeCompleted = nullptr;
+            if (ifToBeCompleted != nullptr) {
+                ifToBeCompleted = nullptr;
+
+                // the complete nodes that were in the stack, were not popped in order to wait for the if to be complete
+                //  but now that we now it wasn't complete, we need to pop them
+                popCompleteNodes(parentNodes, &ifToBeCompleted);
+            }
         }
 
         auto parent = parentNodes.top();
@@ -303,6 +354,9 @@ int AST::build() const {
             std::cerr << token.string(scanner.filepath) << std::endl;
             ++n_errors;
             break;
+        case EOF_TOKEN:
+            keep_consuming_tokens = false;
+            break;
         default:
             // This is an iterative implementation of a Pratt parser.
             // The core logic handles operator precedence by rotating nodes in the AST.
@@ -361,42 +415,7 @@ int AST::build() const {
         }
 
         // pop from the stack all those operators whose operands have been provided
-        bool keep_poping = true;
-        while (!parentNodes.empty() && keep_poping) {
-            keep_poping = false;
-            switch (parentNodes.top()->op_type()) {
-            case UNARY: // operand has just been added in lines above
-                if (parentNodes.top()->children.size() == 1) {
-                    parentNodes.pop(); // operand has been provided
-                    keep_poping = true;
-                }
-                break;
-            case BINARY:
-                if (parentNodes.top()->children.size() == 2 && ifToBeCompleted == nullptr) {
-                    // if ifToBeCompleted != nullptr, it means that there is an if waiting to be completed
-                    //  and we cannot pop elements from the stack yet, as
-                    //  the "complete" elements in the stack may also be if statements waiting to be completed
-                    //  those statements must wait for the current if statement to be completed.
-                    // if those elements are not ifs, they'll be popped anyway, after the if is completed
-                    //  or it was found that it couldn't be completed due to a missing 'else'
-                    if (parentNodes.top()->token.type == IF) {
-                        // if it's an if, which is complete as a binary operator, then it's a candidate
-                        //  to be completed as a ternary operator, if it's followed by else (ignoring } and ;)
-                        ifToBeCompleted = parentNodes.top(); // note that there is no use-after-free issues here as it's a pointer
-                    }
-                    parentNodes.pop(); // both operands have been provided
-                    keep_poping = true;
-                }
-                break;
-            case TERNARY:
-                if (parentNodes.top()->children.size() == 3) {
-                    parentNodes.pop(); // both operands have been provided
-                    keep_poping = true;
-                }
-                break;
-            default:{};
-            }
-        }
+        popCompleteNodes(parentNodes, &ifToBeCompleted);
     }
 
     // at the end, the parentNodes should only contain the root node, if it contains any other elements, then

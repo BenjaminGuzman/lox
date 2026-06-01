@@ -486,6 +486,17 @@ x;
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(2, 0, 0, false));
 }
 
+TEST(InterpreterIntegrationTest, NestedIfStatements2) {
+    underlying_t result = interpret_expression(R"(
+if (true)
+    if (true)
+        var x = "nested true";
+x;
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "nested true");
+}
+
 TEST(InterpreterIntegrationTest, IfElseIfElseStatement) {
     underlying_t result = interpret_expression(R"(
 var x = 15;
