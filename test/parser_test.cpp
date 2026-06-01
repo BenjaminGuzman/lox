@@ -139,6 +139,17 @@ if (a)
     EXPECT_EQ(result, "(if (group a) (if (group b) (print both) (print a only)))");
 }
 
+TEST(ParserTest, NestedIf2) {
+    auto result = parse_and_serialize(R"(
+if (true)
+    if (false)
+        x = 1;
+    else
+        x = 2;
+)");
+    EXPECT_EQ(result, "(if (group true) (if (group false) (= x 1.0) (= x 2.0)))");
+}
+
 TEST(ParserTest, IfElseIfStatement) {
     std::string result = parse_and_serialize(R"(
 if (a)
@@ -161,4 +172,41 @@ else if (x == 3)
     print 3;
 )");
     EXPECT_EQ(result, "(if (group (== x 1.0)) (print 1.0) (if (group (== x 2.0)) (print 2.0) (if (group (== x 3.0)) (print 3.0))))");
+}
+
+TEST(ParserTest, MultipleNestedElseIfStatements) {
+    std::string result = parse_and_serialize(R"(
+if x == 1 {
+    if age < 13 {
+        stage = "child";
+    } else if age < 16 {
+        stage = "young teenager";
+    } else
+        stage = "teenager";
+
+    whatever = "hello";
+} else if x == 2
+    print 2;
+else if x == 3
+    print 3;
+)");
+    EXPECT_EQ(result, "(if (== x 1.0) ({ (if (< age 13.0) ({ (= stage child)) (if (< age 16.0) ({ (= stage young teenager)) (= stage teenager))) (= whatever hello)) (if (== x 2.0) (print 2.0) (if (== x 3.0) (print 3.0))))");
+}
+
+TEST(ParserTest, MultipleNestedElseIfStatements2) {
+    std::string result = parse_and_serialize(R"(
+var stage = "unknown";
+var age = 29;
+if (age < 18) {
+    if (age < 13) stage = "child";
+    else if (age < 16) stage = "young teenager";
+    else stage = "teenager";
+} else if (age < 65) {
+    if (age < 30) stage = "young adult";
+    else if (age < 50) stage = "adult";
+    else stage = "middle-aged adult";
+} else
+    stage = "senior";
+)");
+    EXPECT_EQ(result, "(var (= stage unknown))(var (= age 29.0))(if (group (< age 18.0)) ({ (if (group (< age 13.0)) (= stage child) (if (group (< age 16.0)) (= stage young teenager) (= stage teenager)))) (if (group (< age 65.0)) ({ (if (group (< age 30.0)) (= stage young adult) (if (group (< age 50.0)) (= stage adult) (= stage middle-aged adult)))) (= stage senior)))");
 }

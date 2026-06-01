@@ -115,7 +115,7 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
         .must_be_op_type = BINARY
     });
 
-    if (parent->op_type() == BINARY) {
+    if (parent->op_type() == BINARY && (parent->token.is_arithmetic_operator() || parent->token.is_comparison_operator())) {
         if (parent->token.op_priority() >= operator_node->token.op_priority()) {
             // complete the binary expression
             if (parent->children.size() < 2) {
@@ -204,7 +204,8 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
 int AST::build() const {
     int n_errors = 0;
 
-    ASTNode* lastIf; // points to the last node that was an if statement, this is used for "else" keyword
+    // points to the node that is an if statement pending to be completed as ternary, this is used for the "else" keyword
+    ASTNode* ifToBeCompleted = nullptr;
 
     std::stack<ASTNode*> parentNodes;
     parentNodes.push(root.get());
@@ -212,6 +213,18 @@ int AST::build() const {
         Token token = scanner.next_token();
         if (token.type == EOF_TOKEN)
             break;
+
+        switch (token.type) {
+        case SEMICOLON:
+        case RIGHT_BRACE:
+        case ELSE:
+            break;
+        default:
+            // if there was an if that was a complete binary operator, i.e., if <condition> <exec-if-true>
+            //  and it was meant to be completed as a ternary operator, i.e., if <condition> <if-true> <if-false>
+            //  it can only be completed iff between the if and the 'else' is nothing else but ; and }
+            ifToBeCompleted = nullptr;
+        }
 
         auto parent = parentNodes.top();
 
@@ -240,18 +253,24 @@ int AST::build() const {
             if (token.type == IF) {
                 // for now let's assume it's just an if <condition> <exec-if-true>
                 // however, if we find an else later on, we'll make this ternary, if <condition> <if-true> <if-false>
-                lastIf = parentNodes.top();
-                lastIf->must_be_op_type = BINARY;
+                parentNodes.top()->must_be_op_type = BINARY;
             }
             break;
         }
-        case ELSE:
-            // recover the if (which should have been closed as binary, i.e., if <condition> <exec-if-true>)
-            // and re-open it as ternary, i.e., if <condition> <exec-if-true> <exec-if-false>
-            lastIf->must_be_op_type = TERNARY;
-            parentNodes.push(lastIf);
-            parent = lastIf;
+        case ELSE: {
+            if (ifToBeCompleted == nullptr) {
+                std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
+                        << "Invalid use of 'else' keyword. Must strictly be the next statement after the 'if' statement"
+                        << std::endl;
+                ++n_errors;
+                break;
+            }
+            // re-open the if as ternary, i.e., if <condition> <exec-if-true> <exec-if-false>
+            ifToBeCompleted->must_be_op_type = TERNARY;
+            parentNodes.push(ifToBeCompleted);
+            // parent = ifToBeCompleted; // not needed, the loop will start from the beginning
             break;
+        }
         case SEMICOLON:
             if (parentNodes.top()->token.type == PRINT) {
                 // print statement args end when the ';' is found
@@ -353,7 +372,18 @@ int AST::build() const {
                 }
                 break;
             case BINARY:
-                if (parentNodes.top()->children.size() == 2) {
+                if (parentNodes.top()->children.size() == 2 && ifToBeCompleted == nullptr) {
+                    // if ifToBeCompleted != nullptr, it means that there is an if waiting to be completed
+                    //  and we cannot pop elements from the stack yet, as
+                    //  the "complete" elements in the stack may also be if statements waiting to be completed
+                    //  those statements must wait for the current if statement to be completed.
+                    // if those elements are not ifs, they'll be popped anyway, after the if is completed
+                    //  or it was found that it couldn't be completed due to a missing 'else'
+                    if (parentNodes.top()->token.type == IF) {
+                        // if it's an if, which is complete as a binary operator, then it's a candidate
+                        //  to be completed as a ternary operator, if it's followed by else (ignoring } and ;)
+                        ifToBeCompleted = parentNodes.top(); // note that there is no use-after-free issues here as it's a pointer
+                    }
                     parentNodes.pop(); // both operands have been provided
                     keep_poping = true;
                 }

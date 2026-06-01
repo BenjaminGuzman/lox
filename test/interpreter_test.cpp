@@ -556,3 +556,23 @@ res;
     ASSERT_TRUE(std::holds_alternative<std::string>(result));
     ASSERT_EQ(get_value<std::string>(result), "eligible for voting: true");
 }
+
+TEST(InterpreterIntegrationTest, MultipleElseIf3) {
+    underlying_t result = interpret_expression(R"(
+var stage = "unknown";
+var age = 29;
+if (age < 18) {
+    if (age < 13) stage = "child";
+    else if (age < 16) stage = "young teenager";
+    else stage = "teenager";
+} else if (age < 65) {
+    if (age < 30) stage = "young adult";
+    else if (age < 50) stage = "adult";
+    else stage = "middle-aged adult";
+} else
+    stage = "senior";
+stage;
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "young adult");
+}
