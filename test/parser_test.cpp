@@ -224,3 +224,25 @@ var x = 1 < 2 or 1 == 2 and 20 * 30 < 30 or true and false
 )");
     EXPECT_EQ(result, "(var (= x (or (or (< 1.0 2.0) (and (== 1.0 2.0) (< (* 20.0 30.0) 30.0))) (and true false))))");
 }
+
+TEST(ParserTest, While) {
+    std::string result = parse_and_serialize(R"(
+while (true) {
+    x = x + 1;
+}
+)");
+    EXPECT_EQ(result, "(while (group true) ({ (= x (+ x 1.0))))");
+
+    result = parse_and_serialize(R"(
+while x == 10 and y < 10 {
+    x = x + 1;
+}
+)");
+    EXPECT_EQ(result, "(while (and (== x 10.0) (< y 10.0)) ({ (= x (+ x 1.0))))");
+
+    result = parse_and_serialize(R"(
+while x == 10 and y < 10
+    x = x + 1;
+)");
+    EXPECT_EQ(result, "(while (and (== x 10.0) (< y 10.0)) (= x (+ x 1.0)))");
+}

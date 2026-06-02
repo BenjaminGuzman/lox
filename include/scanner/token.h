@@ -146,7 +146,7 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
     {TRUE, NOT_OPERATOR},
     {FALSE, NOT_OPERATOR},
     {FOR, NOT_OPERATOR},
-    {WHILE, NOT_OPERATOR},
+    {WHILE, BINARY},
     {FUN, NOT_OPERATOR},
     {RETURN, NOT_OPERATOR},
     {SUPER, NOT_OPERATOR},
@@ -325,6 +325,11 @@ uint16_t BasicToken<T>::op_priority() const {
         return 3;
     case OR:
         return 2;
+
+    // all these should have less priority
+    case WHILE:
+    case FOR:
+    case IF:
     case EQ: // equal operator should have the less priority, e.g., in isAdult = x >= 15
              //  x >= 15, should be executed first
         return 1;

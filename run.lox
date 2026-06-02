@@ -1,11 +1,10 @@
-{
-    var bar = 11;
-    var world = 11;
-    var zet = 10;
-    {
-        zet = 20;
-        print zet;
+var x = 10;
+while x < 90 {
+    x = x * 2;
+    print x;
 }
+print x;
+
 
 var a = 10;
 var b;

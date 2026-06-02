@@ -104,6 +104,7 @@ private:
     [[nodiscard]] underlying_t compileLeftBrace(const std::unique_ptr<ASTNode>& astNode);
 
     [[nodiscard]] underlying_t compileIf(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileWhile(const std::unique_ptr<ASTNode>& astNode) const;
 
     [[nodiscard]] underlying_t compileOr(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileAnd(const std::unique_ptr<ASTNode>& astNode) const;
@@ -135,6 +136,7 @@ private:
         {LEFT_BRACE, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
 
         {IF,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},
+        {WHILE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileWhile(astNode);}},
 
         {OR,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileOr(astNode);}},
         {AND,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileAnd(astNode);}},

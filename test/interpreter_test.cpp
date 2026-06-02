@@ -641,3 +641,40 @@ TEST(InterpreterIntegrationTest, AndOrKeywords) {
     ASSERT_TRUE(std::holds_alternative<bool>(result));
     ASSERT_EQ(get_value<bool>(result), false);
 }
+
+TEST(InterpreterIntegrationTest, While) {
+    underlying_t result = interpret_expression(R"(
+var i = 0;
+while (i < 3) {
+    i = i + 1;
+}
+i;
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(3, 0, 0, false));
+
+    // Test while with false condition
+    result = interpret_expression(R"(
+var x = 10;
+while (false) {
+    x = 20;
+}
+x;
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(10, 0, 0, false));
+
+    // Test while with complex condition and side effects
+    result = interpret_expression(R"(
+var a = 0;
+var b = 10;
+while a < 5 and b > 0 {
+    a = a + 1;
+    b = b - 2;
+}
+a;
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(5, 0, 0, false));
+
+}
