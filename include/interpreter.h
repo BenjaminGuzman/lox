@@ -105,6 +105,7 @@ private:
 
     [[nodiscard]] underlying_t compileIf(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileWhile(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] underlying_t compileFor(const std::unique_ptr<ASTNode>& astNode);
 
     [[nodiscard]] underlying_t compileOr(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileAnd(const std::unique_ptr<ASTNode>& astNode) const;
@@ -137,6 +138,7 @@ private:
 
         {IF,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},
         {WHILE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileWhile(astNode);}},
+        {FOR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFor(astNode);}},
 
         {OR,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileOr(astNode);}},
         {AND,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileAnd(astNode);}},

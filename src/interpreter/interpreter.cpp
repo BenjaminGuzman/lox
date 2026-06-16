@@ -15,6 +15,7 @@ underlying_t Interpreter::resolveToken(const Token& token) const {
         return true;
     case FALSE:
         return false;
+    case IGNORE:
     case NIL:
         return nullptr;
     case IDENTIFIER:

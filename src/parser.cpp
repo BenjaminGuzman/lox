@@ -1,4 +1,4 @@
-#include "../include/parser.h"
+#include "parser.h"
 
 #include <stack>
 
@@ -237,8 +237,15 @@ void popCompleteNodes(std::stack<ASTNode*>& parentNodes, ASTNode** ifToBeComplet
             }
             break;
         case TERNARY:
-            if (parentNodes.top()->children.size() == 3) {
-                parentNodes.pop(); // both operands have been provided
+            if (parentNodes.top()->children.size() == 3
+                && parentNodes.top()->token.type != LEFT_PAREN /* left paren should be closed with a right paren */) {
+                parentNodes.pop(); // all operands have been provided
+                keep_poping = true;
+            }
+            break;
+        case QUATERNARY:
+            if (parentNodes.top()->children.size() == 4) {
+                parentNodes.pop(); // all operands have been provided
                 keep_poping = true;
             }
             break;
@@ -297,6 +304,8 @@ int AST::build() const {
             });
             if (token.type == MINUS || token.type == PLUS || token.type == NOT)
                 operator_node->must_be_op_type = UNARY;
+            if (parentNodes.top()->token.type == FOR)
+                operator_node->must_be_op_type = TERNARY; // for receives a group, and that group must be ternary
             parent->children.push_back(std::move(operator_node)); // The tree itself should be the owner of all the nodes (hence the std::move)
             operator_node = nullptr;
             parentNodes.push(parent->children.back().get());
@@ -330,6 +339,30 @@ int AST::build() const {
                     // i.e., print should have children
                     ++n_errors;
                 parentNodes.pop();
+            } else if (parentNodes.top()->parent != nullptr && parentNodes.top()->parent->token.type == FOR) {
+                const auto& forNode = parentNodes.top(); // node actually points to a group ()
+                if (forNode->children.empty()) {
+                    // we've received a for(; <condition?>; <increment?>)
+                    //  and we need to convert it to for(<no-op>; <condition?>; <increment?>)
+                    forNode->children.emplace_back(std::make_unique<ASTNode>(ASTNode{
+                        .token = BasicToken<underlying_t>{IGNORE, "no-op", std::monostate(), 0, 0},
+                        .children = {},
+                        .parent = forNode
+                    }));
+                }
+
+                if (forNode->children.size() == 1) {
+                    // we've received a for(<init>; <condition?>; <increment?>)
+                    if (scanner.peek_next().type == SEMICOLON) { // condition was not given, i.e.,
+                        // we've received a for(<init>; ; <increment?>)
+                        //  and we need to convert it to for(<init>; true; <increment?>)
+                        forNode->children.emplace_back(std::make_unique<ASTNode>(ASTNode{
+                            .token = BasicToken<underlying_t>{TRUE, "true", std::string("true"), 0, 0},
+                            .children = {},
+                            .parent = forNode
+                        }));
+                    } // else condition was given, i.e., we've received a for(<init>; <condition>; <increment?>)
+                }
             }
             break;
         case RIGHT_BRACE: // indicates the '{' (which should be the current parent) has been closed
@@ -393,11 +426,25 @@ int AST::build() const {
                     std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
                             << "Premature closure of parenthesis. Check statements inside. "
                             << "Will try my best to recover from this, but there are no guarantees I'll recover successfully" << std::endl;
-                    while (parentNodes.top()->token.type != LEFT_PAREN) {
+                    while (parentNodes.top() != nullptr && parentNodes.top()->token.type != LEFT_PAREN) {
                         // pop all the non-parenthesis nodes to "recover" from this
                         ++n_errors;
                         parentNodes.pop();
                     }
+                } else {
+                    // correctly closing parenthesis. Let's now correctly close
+                    if (parentNodes.top()->parent != nullptr && parentNodes.top()->parent->token.type == FOR) {
+                        const auto& forNode = parentNodes.top(); // node actually points to a group ()
+                        if (forNode->children.size() == 2) {
+                            // we've received a for(<init>; <condition>;)
+                            forNode->children.emplace_back(std::make_unique<ASTNode>(ASTNode{
+                                .token = BasicToken<underlying_t>{IGNORE, "no-op", std::monostate(), 0, 0},
+                                .children = {},
+                                .parent = forNode
+                            }));
+                        }
+                    }
+
                 }
                 parentNodes.pop(); // the parent for the next node shouldn't be the current group
                 break;
@@ -432,6 +479,8 @@ int AST::build() const {
             message = "Operator '" + incomplete->token.lexeme + "' is missing its right-hand side operand";
         else if (incomplete->op_type() == UNARY && incomplete->children.empty())
             message = "Operator '" + incomplete->token.lexeme + "' is missing its operand";
+        else if (incomplete->op_type() == TERNARY && incomplete->children.size() < 3)
+            message = "Operator '" + incomplete->token.lexeme + "' must have 3 operands";
         else
             message = "Incomplete expression near '" + incomplete->token.lexeme + "'";
         std::cerr << error_in_file_prefix(scanner.filepath, incomplete->token.line, incomplete->token.col) << message << std::endl;

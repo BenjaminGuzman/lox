@@ -246,3 +246,71 @@ while x == 10 and y < 10
 )");
     EXPECT_EQ(result, "(while (and (== x 10.0) (< y 10.0)) (= x (+ x 1.0)))");
 }
+
+TEST(ParserTest, ForStatementFull) {
+    std::string result = parse_and_serialize(R"(
+for (var i = 0; i < 10; i = i + 1) {
+    print i;
+}
+)");
+    // (for
+    //   (group
+    //      (var (= i 0.0))
+    //      (< i 10.0)
+    //      (= i (+ i 1.0))
+    //   )
+    //   ({ (print i))
+    // )
+    //
+    EXPECT_EQ(result, "(for (group (var (= i 0.0)) (< i 10.0) (= i (+ i 1.0))) ({ (print i)))");
+}
+
+TEST(ParserTest, ForStatementNoInit) {
+    std::string result = parse_and_serialize(R"(
+for (; i < 10; i = i + 1) {
+    print i;
+}
+)");
+    EXPECT_EQ(result, "(for (group no-op (< i 10.0) (= i (+ i 1.0))) ({ (print i)))");
+}
+
+TEST(ParserTest, ForStatementNoIncrement) {
+    std::string result = parse_and_serialize(R"(
+for (var i = 0; i < 10;) {
+    print i;
+}
+)");
+    EXPECT_EQ(result, "(for (group (var (= i 0.0)) (< i 10.0) no-op) ({ (print i)))");
+}
+
+TEST(ParserTest, ForStatementAsWhile) {
+    std::string result = parse_and_serialize(R"(
+for (; i < 10;) {
+    print i;
+}
+)");
+    EXPECT_EQ(result, "(for (group no-op (< i 10.0) no-op) ({ (print i)))");
+}
+
+TEST(ParserTest, ForStatementWithIncrementOnly) {
+    std::string result = parse_and_serialize(R"(
+for (; ; i = i + 1) {
+    print i;
+}
+)");
+    EXPECT_EQ(result, "(for (group no-op true (= i (+ i 1.0))) ({ (print i)))");
+}
+
+TEST(ParserTest, ForStatementInfinite) {
+    std::string result = parse_and_serialize(R"(
+for (;;) {
+    print "loop";
+}
+)");
+    EXPECT_EQ(result, "(for (group no-op true no-op) ({ (print loop)))");
+}
+
+TEST(ParserTest, ForStatementSimpleBody) {
+    std::string result = parse_and_serialize("for (i = 0; i < 5; i = i + 1) print i;");
+    EXPECT_EQ(result, "(for (group (= i 0.0) (< i 5.0) (= i (+ i 1.0))) (print i))");
+}

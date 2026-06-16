@@ -20,6 +20,7 @@ enum TokenOpType {
     UNARY_OR_BINARY, // token can either be a unary or binary operator
     BINARY_OR_NOT_OPERATOR, // token can either be a binary operator or not an operator at all
     BINARY_OR_TERNARY,
+    QUATERNARY,
     MULTI // token is a multi-token operator
 };
 
@@ -75,6 +76,8 @@ enum TokenType {
     INVALID_NUMBER,
 
     AST_ROOT, // especial value
+
+    IGNORE
 };
 std::string to_string_as_expected_by_evaluation_system(const TokenType& type);
 inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {
@@ -145,7 +148,12 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
     {ELSE, NOT_OPERATOR},
     {TRUE, NOT_OPERATOR},
     {FALSE, NOT_OPERATOR},
-    {FOR, NOT_OPERATOR},
+
+    /**
+     * for receives a group (which is ternary and contains the init, condition, increment) and an execution
+     * i.e., it's a binary op
+     */
+    {FOR, BINARY},
     {WHILE, BINARY},
     {FUN, NOT_OPERATOR},
     {RETURN, NOT_OPERATOR},
@@ -158,6 +166,7 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
     {UNTERMINATED_STRING, NOT_OPERATOR},
     {INVALID_NUMBER, NOT_OPERATOR},
     {AST_ROOT, NOT_OPERATOR},
+    {IGNORE, NOT_OPERATOR}
 };
 
 /**
@@ -465,7 +474,7 @@ inline std::unordered_map<TokenType, std::string> tokenTypeStrings = {
     {THIS, "THIS"},
     {VAR, "VAR"},
     {NIL, "NIL"},
-    {PRINT, "PRINT"},
+    {PRINT, "PRINT"}
 };
 
 inline std::string to_string_as_expected_by_evaluation_system(const TokenType& type) {

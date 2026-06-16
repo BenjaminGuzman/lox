@@ -678,3 +678,30 @@ a;
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(5, 0, 0, false));
 
 }
+
+TEST(InterpreterIntegrationTest, For) {
+    underlying_t result = interpret_expression(R"(
+for (var i = 0; i < 3; i = i + 1) {
+    i;
+}
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(2, 0, 0, false));
+
+    result = interpret_expression(R"(
+for (var i = 10; i < 3; i = i + 1) {
+    i;
+}
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(10, 0, 0, false));
+
+    result = interpret_expression(R"(
+var i = 0
+for (; i <= 3;) {
+    i = i + 1;
+}
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(4, 0, 0, false));
+}
