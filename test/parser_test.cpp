@@ -310,6 +310,29 @@ for (;;) {
     EXPECT_EQ(result, "(for (group no-op true no-op) ({ (print loop)))");
 }
 
+TEST(ParserTest, ForEmptyBody) {
+    std::string result = parse_and_serialize(R"(
+for (; ;) {}
+)");
+    EXPECT_EQ(result, "(for (group no-op true no-op) ({))");
+}
+
+TEST(ParserTest, ForEmptyBody2) {
+    std::string result = parse_and_serialize(R"(
+var baz = "after";
+{
+  var baz = "before";
+
+  for (var baz = 0; baz < 1; baz = baz + 1) {
+    print baz;
+    var baz = -1;
+    print baz;
+  }
+}
+)");
+    EXPECT_EQ(result, "(var (= baz after))({ (var (= baz before)) (for (group (var (= baz 0.0)) (< baz 1.0) (= baz (+ baz 1.0))) ({ (print baz) (var (= baz (- 1.0))) (print baz))))");
+}
+
 TEST(ParserTest, ForStatementSimpleBody) {
     std::string result = parse_and_serialize("for (i = 0; i < 5; i = i + 1) print i;");
     EXPECT_EQ(result, "(for (group (= i 0.0) (< i 5.0) (= i (+ i 1.0))) (print i))");

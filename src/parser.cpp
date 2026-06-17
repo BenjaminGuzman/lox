@@ -304,7 +304,7 @@ int AST::build() const {
             });
             if (token.type == MINUS || token.type == PLUS || token.type == NOT)
                 operator_node->must_be_op_type = UNARY;
-            if (parentNodes.top()->token.type == FOR)
+            if (parentNodes.top()->token.type == FOR && token.type == LEFT_PAREN)
                 operator_node->must_be_op_type = TERNARY; // for receives a group, and that group must be ternary
             parent->children.push_back(std::move(operator_node)); // The tree itself should be the owner of all the nodes (hence the std::move)
             operator_node = nullptr;
@@ -432,7 +432,7 @@ int AST::build() const {
                         parentNodes.pop();
                     }
                 } else {
-                    // correctly closing parenthesis. Let's now correctly close
+                    // correctly closing parenthesis. Let's now correctly close the for () (iff it's a for)
                     if (parentNodes.top()->parent != nullptr && parentNodes.top()->parent->token.type == FOR) {
                         const auto& forNode = parentNodes.top(); // node actually points to a group ()
                         if (forNode->children.size() == 2) {
