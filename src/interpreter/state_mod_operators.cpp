@@ -28,7 +28,7 @@ underlying_t Interpreter::compileEqual(const std::unique_ptr<ASTNode>& astNode) 
 underlying_t Interpreter::compileVar(const std::unique_ptr<ASTNode>& astNode) {
     // declaration, i.e., var a;
     if (astNode->children[0]->token.type == IDENTIFIER) {
-        this->registerError("Apparently in lox is illegal to declare a variable", astNode->token);
+        this->registerError("Apparently in lox is illegal to declare a variable", astNode->token); // FIXME remove me
         return std::monostate();
         const std::string& identifier = astNode->children[0]->token.lexeme;
         // if (stackTop().symbols.contains(identifier)) {
