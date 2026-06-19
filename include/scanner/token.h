@@ -77,7 +77,8 @@ enum TokenType {
 
     AST_ROOT, // especial value
 
-    IGNORE
+    IGNORE,
+    FUNC_CALL // special token for a function that was called
 };
 std::string to_string_as_expected_by_evaluation_system(const TokenType& type);
 inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {

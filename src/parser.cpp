@@ -304,7 +304,7 @@ int AST::build() const {
             });
             if (token.type == MINUS || token.type == PLUS || token.type == NOT)
                 operator_node->must_be_op_type = UNARY;
-            if (parentNodes.top()->token.type == FOR && token.type == LEFT_PAREN)
+            if (token.type == LEFT_PAREN && parent->token.type == FOR) // for()
                 operator_node->must_be_op_type = TERNARY; // for receives a group, and that group must be ternary
             parent->children.push_back(std::move(operator_node)); // The tree itself should be the owner of all the nodes (hence the std::move)
             operator_node = nullptr;
@@ -420,7 +420,7 @@ int AST::build() const {
             // operation, e.g., (10 - 4) * 2, and we need to handle that, the group should be child of *
             // that's why we can't put this in the switch above
             case RIGHT_PAREN: // indicates the '(' (which should be the current parent) has been closed
-                if (parentNodes.top()->token.type != LEFT_PAREN) {
+                if (parentNodes.top()->token.type != LEFT_PAREN && parentNodes.top()->token.type != FUNC_CALL) {
                     // if we reached a ')', it should mean the current parent is '(', if it's not, then there may be a
                     // syntax error somewhere...
                     std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
@@ -448,6 +448,28 @@ int AST::build() const {
                 }
                 parentNodes.pop(); // the parent for the next node shouldn't be the current group
                 break;
+            case IDENTIFIER:
+                if (scanner.peek_next().type == LEFT_PAREN) { // it's a function call <function id>()
+                    auto _ = scanner.next_token(); // discard the (
+
+                    // in the end, the tree should contain Token{function name} ->(as children) {function args}
+                    const Token funcCallToken = BasicToken<underlying_t>{
+                        .type = FUNC_CALL,
+                        .lexeme = token.lexeme,
+                        .literal = token.lexeme,
+                        .line = token.line,
+                        .col = token.col,
+                    };
+                    auto node = std::make_unique<ASTNode>(ASTNode{
+                        .token = funcCallToken,
+                        .parent = parent,
+                        .must_be_op_type = MULTI
+                    });
+                    parent->children.push_back(std::move(node));
+                    parentNodes.push(parent->children.back().get());
+                    node = nullptr;
+                    break;
+                }
             default:
                 // current token is likely the (missing) argument of an operator,
                 // just push it so that the parent (the operator) gets completed

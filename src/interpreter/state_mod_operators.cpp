@@ -71,4 +71,21 @@ underlying_t Interpreter::compileLeftBrace(const std::unique_ptr<ASTNode>& astNo
     stack.pop_back();
     return ret;
 }
+
+underlying_t Interpreter::compileFuncCall(const std::unique_ptr<ASTNode> &astNode) {
+    std::string funcName = astNode->token.lexeme;
+    size_t n_expected_args = astNode->children.size();
+    std::string funcSignature = funcName + "_" + std::to_string(n_expected_args);
+    if (NATIVE_FUNCTIONS.contains(funcSignature)) // try matching by the exact signature (name + args)
+        return NATIVE_FUNCTIONS[funcSignature](astNode.get(), *this);
+    if (NATIVE_FUNCTIONS.contains(funcName)) {
+        // try matching by func name (meaning it's a vararg func)
+        auto f = NATIVE_FUNCTIONS[funcName];
+        return NATIVE_FUNCTIONS[funcName](astNode.get(), *this);
+    }
+
+    // TODO search in the user-defined functions
+    this->registerError("Function '" + funcName + "' does not exists", astNode->token);
+    return std::monostate();
+}
 }

@@ -1,4 +1,10 @@
+print clock();
+print clock() + 20;
+
 var x = 10;
+delete(x);
+print x;
+
 while x < 90 {
     x = x * 2;
     print x;
@@ -14,7 +20,7 @@ var c;
 print c;
 var c = b;
 print c;
-//print "value of a + b: " + (a + b);
+print "value of a + b: " + (a + b);
 
 
 1 + 2;

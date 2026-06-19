@@ -1,7 +1,9 @@
 #ifndef CODECRAFTERS_INTERPRETER_INTERPRETER_H
 #define CODECRAFTERS_INTERPRETER_INTERPRETER_H
+#include <any>
 #include <memory>
 #include <vector>
+#include <ranges>
 
 #include "parser.h"
 #include "interpreter/stackframe.h"
@@ -22,6 +24,33 @@ private:
      * The execution stack
      */
     std::vector<Stackframe> stack;
+
+    /**
+     * Symbol table for user-defined functions
+     * the key for this map is the signature, composed of the function's name and
+     * the number of parameters, i.e.,
+     * for the function eat(x, y) the name is "eat_2".
+     * All of the parameters should be of type underlying_t
+     *
+     * Points to the '{' token of the function, i.e., the block of the function that should run,
+     * i.e., running that node will effectively run the function
+     */
+    std::unordered_map<std::string, ASTNode*> USER_FUNCTIONS;
+
+    /**
+     * Symbol table for native functions
+     * the key for this map is the signature, composed of the function's name and
+     * the number of parameters, i.e.,
+     * for the function clock(), the name is "clock_0",
+     * for clock(string), the name is "clock_1",
+     * for clock(...), i.e., varargs, the name is "clock"
+     *
+     * The signature was decided to include the number of args instead of their types
+     * (e.g., "clock_string") 'cause the lang is loosely typed.
+     *
+     * The function receives the @link FUNC_CALL @endlink node
+     */
+    static std::unordered_map<std::string, std::function<underlying_t(ASTNode*, Interpreter&)>> NATIVE_FUNCTIONS;
 
     /**
      *
@@ -102,6 +131,7 @@ private:
     [[nodiscard]] underlying_t compileEqual(const std::unique_ptr<ASTNode>& astNode);
     [[nodiscard]] underlying_t compileVar(const std::unique_ptr<ASTNode>& astNode);
     [[nodiscard]] underlying_t compileLeftBrace(const std::unique_ptr<ASTNode>& astNode);
+    [[nodiscard]] underlying_t compileFuncCall(const std::unique_ptr<ASTNode>& astNode);
 
     [[nodiscard]] underlying_t compileIf(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileWhile(const std::unique_ptr<ASTNode>& astNode) const;
@@ -135,6 +165,7 @@ private:
         {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
         {VAR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
         {LEFT_BRACE, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
+        {FUNC_CALL,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFuncCall(astNode);}},
 
         {IF,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},
         {WHILE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileWhile(astNode);}},
@@ -172,6 +203,17 @@ public:
      * @param root the AST node to be executed
      */
     [[nodiscard]] underlying_t execute(const std::unique_ptr<ASTNode>& root) const;
+
+    /**
+     * Deletes the first symbol found in the stack (top to bottom, i.e., recent symbols are deleted first)
+     * @param symbol the name of the symbol to remove from the stack
+     */
+    void deleteFromStack(const std::string& symbol) {
+        for (auto& it : std::ranges::views::reverse(stack))
+            if (it.symbols.contains(symbol)) {
+                it.symbols.erase(symbol);
+            }
+    }
 };
 
 [[nodiscard]] std::string to_string(bool b);
