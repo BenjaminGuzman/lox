@@ -104,7 +104,8 @@ std::string validate_args_and_get_file(int argc, const char** argv, const std::s
 
     int n_errors_eval = 0;
     lox::registerErrorF logErrors = [&n_errors_eval, &abs_filepath](std::string message, const Token& token) {
-        if (message == "Apparently in lox is illegal to declare a variable")
+        if (message == "Apparently in lox is illegal to declare a variable"
+            || message == "Invalid for that should be valid")
             exit(65);
 
         std::cerr << lox::error_in_file_prefix(abs_filepath, token.line, token.col) << message << std::endl;

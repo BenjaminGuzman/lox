@@ -46,6 +46,11 @@ underlying_t Interpreter::compileFor(const std::unique_ptr<ASTNode>& astNode) {
                             "This may be an issue with lox parser", astNode->token);
         return nullptr;
     }
+    if (forGroup->children[0]->token.type == LEFT_BRACE || forGroup->children[1]->token.type == LEFT_BRACE
+        || forGroup->children[2]->token.type == LEFT_BRACE) {
+        this->registerError("Invalid for that should be valid", forGroup->children[0]->token);
+        return nullptr;
+    }
     const auto& forExec = astNode->children[1];
 
     stack.emplace_back(); // open a new stackframe for the for loop
