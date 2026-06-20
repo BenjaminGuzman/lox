@@ -3,6 +3,8 @@
 #include <string>
 #include <cmath> // For std::abs
 
+using namespace lox;
+
 // Helper to compare doubles with a tolerance
 bool doubles_are_equal(double a, double b, double epsilon = 1e-9) {
     return std::abs(a - b) < epsilon;
@@ -354,8 +356,8 @@ TEST(RealNumberTest, MultiplicationBasic) {
     RealNumber b = {.integer = 2, .fractional = 0, .n_fractional_digits = 1, .is_negative = false};
     RealNumber res = a * b;
     EXPECT_EQ(res.integer, 2);
-    EXPECT_EQ(res.fractional, 40); // 1+1 digits = 2 digits precision (0.40)
-    EXPECT_EQ(res.n_fractional_digits, 2);
+    EXPECT_EQ(res.fractional, 4);
+    EXPECT_EQ(res.n_fractional_digits, 1);
     EXPECT_FALSE(res.is_negative);
 }
 
@@ -389,4 +391,111 @@ TEST(RealNumberTest, MultiplicationSigns) {
     RealNumber zero = {.integer = 0, .fractional = 0, .n_fractional_digits = 1, .is_negative = false};
     RealNumber res3 = zero * a;
     EXPECT_FALSE(res3.is_negative);
+}
+
+TEST(RealNumberTest, DivisionBasic) {
+    // 10 / 2 = 5
+    RealNumber a(10, 0, 0, false);
+    RealNumber b(2, 0, 0, false);
+    RealNumber res = a / b;
+    EXPECT_EQ(res.integer, 5);
+    EXPECT_EQ(res.fractional, 0);
+    EXPECT_FALSE(res.is_negative);
+}
+
+TEST(RealNumberTest, DivisionWithFractionalResult) {
+    // 1 / 2 = 0.5
+    RealNumber a(1, 0, 0, false);
+    RealNumber b(2, 0, 0, false);
+    RealNumber res = a / b;
+    EXPECT_EQ(res.integer, 0);
+    EXPECT_EQ(res.fractional, 5);
+    EXPECT_EQ(res.n_fractional_digits, 1);
+    EXPECT_FALSE(res.is_negative);
+}
+
+TEST(RealNumberTest, DivisionOfFractionalNumbers) {
+    // 2.5 / 0.5 = 5
+    RealNumber a(2, 5, 1, false);
+    RealNumber b(0, 5, 1, false);
+    RealNumber res = a / b;
+    EXPECT_EQ(res.integer, 5);
+    EXPECT_EQ(res.fractional, 0);
+    EXPECT_FALSE(res.is_negative);
+}
+
+TEST(RealNumberTest, DivisionSigns) {
+    // -10 / 2 = -5
+    RealNumber a(10, 0, 0, true);
+    RealNumber b(2, 0, 0, false);
+    RealNumber res = a / b;
+    EXPECT_EQ(res.integer, 5);
+    EXPECT_EQ(res.fractional, 0);
+    EXPECT_TRUE(res.is_negative);
+
+    // 10 / -2 = -5
+    RealNumber c(10, 0, 0, false);
+    RealNumber d(2, 0, 0, true);
+    RealNumber res2 = c / d;
+    EXPECT_EQ(res2.integer, 5);
+    EXPECT_EQ(res2.fractional, 0);
+    EXPECT_TRUE(res2.is_negative);
+
+    // -10 / -2 = 5
+    RealNumber e(10, 0, 0, true);
+    RealNumber f(2, 0, 0, true);
+    RealNumber res3 = e / f;
+    EXPECT_EQ(res3.integer, 5);
+    EXPECT_EQ(res3.fractional, 0);
+    EXPECT_FALSE(res3.is_negative);
+}
+
+TEST(RealNumberTest, DivisionByZero) {
+    RealNumber a(10, 0, 0, false);
+    RealNumber b(0, 0, 0, false);
+    EXPECT_THROW(a / b, std::invalid_argument);
+}
+
+TEST(RealNumberTest, DivisionWithLargeNumbers) {
+    // 1781927616 / 1000 = 1781927.616
+    RealNumber a(1781927616, 0, 0, false);
+    RealNumber b(1000, 0, 0, false);
+    RealNumber res = a / b;
+    EXPECT_EQ(res.integer, 1781927);
+    EXPECT_EQ(res.fractional, 616);
+    EXPECT_EQ(res.n_fractional_digits, 3);
+    EXPECT_FALSE(res.is_negative);
+}
+
+TEST(RealNumberTest, Reciprocal) {
+    // Reciprocal of 2 is 0.5
+    RealNumber one(1, 0, 0, false);
+    RealNumber two(2, 0, 0, false);
+    RealNumber res = one / two;
+    EXPECT_EQ(res.integer, 0);
+    EXPECT_EQ(res.fractional, 5);
+    EXPECT_EQ(res.n_fractional_digits, 1);
+    EXPECT_FALSE(res.is_negative);
+}
+
+TEST(RealNumberTest, DivisionWithPrecision) {
+    // 1 / 3 = 0.333...
+    RealNumber a(1, 0, 0, false);
+    RealNumber b(3, 0, 0, false);
+    RealNumber res = a / b;
+    EXPECT_EQ(res.integer, 0);
+    EXPECT_EQ(res.fractional, 333333333333333333);
+    EXPECT_EQ(res.n_fractional_digits, 18); // expected precision is 18
+    EXPECT_FALSE(res.is_negative);
+}
+
+TEST(RealNumberTest, AnotherLargeNumberDivision) {
+    // 10000000000 / 3
+    RealNumber a(10000000000ULL, 0, 0, false);
+    RealNumber b(3, 0, 0, false);
+    RealNumber res = a / b;
+    EXPECT_EQ(res.integer, 3333333333);
+    EXPECT_EQ(res.fractional, 333333333333333333);
+    EXPECT_EQ(res.n_fractional_digits, 18); // expected precision is 18
+    EXPECT_FALSE(res.is_negative);
 }

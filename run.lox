@@ -1,5 +1,6 @@
 print clock();
 print clock() + 20;
+print clock() / 1000;
 
 var x = 10;
 delete(x);

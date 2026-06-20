@@ -2,7 +2,9 @@
 #include <iomanip>
 #include <sstream>
 #include <cmath>
+#include <sys/stat.h>
 
+namespace lox {
 std::string to_string(const RealNumber& number) {
     std::string sign = number.is_negative ? "-" : "";
     if (number.n_fractional_digits == 0 || number.fractional == 0)
@@ -34,7 +36,135 @@ std::string to_string_as_expected_by_evaluation_system(const RealNumber* number)
     if (n_fractional_digits == 0)
         return (is_negative ? -1 : 1) * static_cast<double>(integer);
 
-    return (is_negative ? -1 : 1) * (static_cast<double>(integer) + static_cast<double>(fractional) / std::pow(10.0, n_fractional_digits));
+    return (is_negative ? -1 : 1) * (static_cast<double>(integer) + static_cast<double>(fractional) / static_cast<double>(pow10(n_fractional_digits)));
+}
+
+RealNumber& RealNumber::round(unsigned int target_digits) {
+    if (n_fractional_digits <= target_digits)
+        return *this;
+
+    unsigned int digits_to_remove = n_fractional_digits - target_digits;
+    unsigned long long divisor = pow10(digits_to_remove);
+    unsigned long long remainder = fractional % divisor;
+
+    fractional /= divisor;
+
+    // round up if the removed part is >= 0.5
+    if (remainder >= divisor / 2) {
+        ++fractional;
+        // handle rollover (e.g., 0.99 rounded to 1 digit becomes 1.0)
+        if (target_digits > 0 && fractional >= pow10(target_digits)) {
+            fractional = 0;
+            ++integer;
+        } else if (target_digits == 0 && fractional > 0) {
+            fractional = 0;
+            integer++;
+        }
+    }
+
+    n_fractional_digits = static_cast<int>(target_digits);
+    return *this;
+}
+
+RealNumber& RealNumber::reduce_noise() {
+    if (n_fractional_digits < 6)
+        return *this;
+
+    // inspect the extreme tail (last 6 digits) for noise patterns
+    unsigned long long tail = fractional % pow10(6);
+    if (tail >= 999'995) {
+        // found noise like ...9998 -> round up mathematically
+        fractional += 1'000'000 - tail;
+        if (fractional >= pow10(n_fractional_digits)) {
+            ++integer;
+            fractional = 0;
+            n_fractional_digits = 0;
+        }
+    } else if (tail <= 5) {
+        // Found noise like ...0002 -> Truncate the noise
+        fractional -= tail;
+    }
+
+    return *this;
+}
+
+RealNumber &RealNumber::clean_trailing_zeroes() {
+    while (n_fractional_digits > 0 && fractional % 10 == 0) {
+        fractional /= 10;
+        n_fractional_digits--;
+    }
+
+    if (fractional == 0)
+        n_fractional_digits = 0;
+
+    return *this;
+}
+
+size_t RealNumber::count_digits(unsigned long long n) {
+    int count = 0;
+
+    while (n > 0) {
+        ++count;
+        n /= 10;
+    }
+
+    return count;
+}
+
+[[nodiscard]] RealNumber RealNumber::reciprocal() const {
+    if (integer == 0 && fractional == 0)
+        throw std::invalid_argument("Cannot find reciprocal of zero.");
+
+    RealNumber n_abs = {
+        .integer = this->integer,
+        .fractional = this->fractional,
+        .n_fractional_digits = this->n_fractional_digits,
+        .is_negative = false
+    };
+
+    /*
+     For the formula x_{i+1} = x_i (2 − n x_i) (Newton-Raphson formula for reciprocals) to converge to 1/n,
+     the initial guess (x_0) must strictly fall within 0 < x_0 < 2 / n, otherwise it converges to -Inf
+     We have 2 cases for finding an approximation:
+      - When it has an integer part
+        If a number has D integer digits, we know the number is strictly less than 10^D (e.g. 305 < 10^3)
+        i.e., n < 10 ^ D -> 1 < 10^D / n -> 10^(-D) < 1 / n
+        Since 1/n = (2/n) / 2, we have that 0 < x_0 <= 10^(-D) < 1 / n < 2 / n, i.e., 10^(-D) is a safe approximation
+      - When it has a fractional part
+        We count the number of "leading zeros" (Z) immediately after the decimal point before the first non-zero digit
+        e.g., if n=0.0045, it has 2 leading zeros. This means n is strictly less than 10^(-Z) (e.g., 0.0045 < 10^(−2))
+        Because n < 10 ^ (-Z) -> n 10^Z < 1 -> 10^Z < 1 / n we have that
+        0 < x_0 <= 10^Z < 1 / n < 2 / n, i.e., 10^Z is a safe approximation
+    */
+    RealNumber x;
+    if (integer > 0) { // x_0 = 10^(-D) = 0.000....0001
+        size_t digits = count_digits(integer);
+        x.integer = 0;
+        x.fractional = 1;
+        x.n_fractional_digits = static_cast<int>(digits);
+    } else { // x_0 = 10^Z = 100....00.0
+        size_t actual_frac_digits = count_digits(fractional);
+        size_t leading_zeros = n_fractional_digits - actual_frac_digits;
+        x.integer = pow10(leading_zeros);
+        x.fractional = 0;
+        x.n_fractional_digits = 0;
+    }
+
+    RealNumber two;
+    two.integer = 2;
+    two.fractional = 0;
+    two.n_fractional_digits = 0;
+
+    // fixed iterations are normal for arbitrary precision algorithms since checking
+    // the dynamic distance between two huge string-numbers is computationally heavy.
+    for (int i = 0; i < NEWTON_RAPHSON_MAX_ITERATIONS; ++i) {
+        // x_{i + 1} = x_i (2 - n x_i)
+        RealNumber next_x = x * (two - n_abs * x);
+        x = next_x;
+    }
+
+    x.is_negative = is_negative;
+    return x.reduce_noise().clean_trailing_zeroes();
 }
 
 RealNumber operator+(const RealNumber& lhs, const RealNumber& rhs) {
@@ -42,15 +172,15 @@ RealNumber operator+(const RealNumber& lhs, const RealNumber& rhs) {
 
     // e.g. 0.0001 + 0.1 =
     // 1 / 10^4 + 1 / 10^1 = (1 + 1 * 10^(4 - 1)) / 10^4 = (1 + 1 * 10^3) / 10^4
-    unsigned long long lhs_frac = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
-    unsigned long long rhs_frac = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+    unsigned long long lhs_frac = lhs.fractional * pow10(max_digits - lhs.n_fractional_digits);
+    unsigned long long rhs_frac = rhs.fractional * pow10(max_digits - rhs.n_fractional_digits);
 
     if (lhs.is_negative == rhs.is_negative) {
         // -a - b = -(a + b)
         // a + b = a + b
 
         unsigned long long new_frac = lhs_frac + rhs_frac;
-        auto carry_threshold = static_cast<unsigned long long>(std::pow(10, max_digits)); // if new_frac >= this value, carrying is needed
+        auto carry_threshold = pow10(max_digits); // if new_frac >= this value, carrying is needd
         int carry = 0;
         if (new_frac >= carry_threshold) {
             // e.g., 0.99 + 0.09, new_frac = 100, carry_threshold = 100 -> carry = 1, new_frac = 0
@@ -80,7 +210,7 @@ RealNumber operator+(const RealNumber& lhs, const RealNumber& rhs) {
     unsigned long long smaller_frac = lhs_is_larger ? rhs_frac : lhs_frac;
 
     unsigned long long res_frac;
-    auto borrow_threshold = static_cast<unsigned long long>(std::pow(10, max_digits));
+    auto borrow_threshold = pow10(max_digits);
     int borrow = 0;
 
     if (larger_frac < smaller_frac) {
@@ -130,8 +260,8 @@ bool operator==(const RealNumber& lhs, const RealNumber& rhs) {
 
     // Normalize fractional parts for comparison
     int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
-    unsigned long long lhs_frac_normalized = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
-    unsigned long long rhs_frac_normalized = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+    unsigned long long lhs_frac_normalized = lhs.fractional * pow10(max_digits - lhs.n_fractional_digits);
+    unsigned long long rhs_frac_normalized = rhs.fractional * pow10(max_digits - rhs.n_fractional_digits);
 
     return lhs_frac_normalized == rhs_frac_normalized;
 }
@@ -158,8 +288,8 @@ bool operator<(const RealNumber& lhs, const RealNumber& rhs) {
         is_abs_lhs_less = lhs.integer < rhs.integer;
     else {
         int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
-        auto lhs_f = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
-        auto rhs_f = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+        auto lhs_f = lhs.fractional * pow10(max_digits - lhs.n_fractional_digits);
+        auto rhs_f = rhs.fractional * pow10(max_digits - rhs.n_fractional_digits);
         if (lhs_f != rhs_f)
             is_abs_lhs_less = lhs_f < rhs_f;
     }
@@ -185,8 +315,8 @@ bool operator<=(const RealNumber& lhs, const RealNumber& rhs) {
         is_abs_lhs_less_or_equal = lhs.integer <= rhs.integer;
     else {
         int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
-        auto lhs_f = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
-        auto rhs_f = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+        auto lhs_f = lhs.fractional * pow10(max_digits - lhs.n_fractional_digits);
+        auto rhs_f = rhs.fractional * pow10(max_digits - rhs.n_fractional_digits);
         if (lhs_f == rhs_f)
             return true; // magnitudes are equal
 
@@ -215,8 +345,8 @@ bool operator>(const RealNumber& lhs, const RealNumber& rhs) {
         is_abs_lhs_greater = lhs.integer > rhs.integer;
     else {
         int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
-        auto lhs_f = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
-        auto rhs_f = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+        auto lhs_f = lhs.fractional * pow10(max_digits - lhs.n_fractional_digits);
+        auto rhs_f = rhs.fractional * pow10(max_digits - rhs.n_fractional_digits);
         if (lhs_f != rhs_f)
             is_abs_lhs_greater = lhs_f > rhs_f;
     }
@@ -242,8 +372,8 @@ bool operator>=(const RealNumber& lhs, const RealNumber& rhs) {
         is_abs_rhs_greater_or_equal = lhs.integer >= rhs.integer;
     else {
         int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
-        auto lhs_f = lhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - lhs.n_fractional_digits));
-        auto rhs_f = rhs.fractional * static_cast<unsigned long long>(std::pow(10, max_digits - rhs.n_fractional_digits));
+        auto lhs_f = lhs.fractional * pow10(max_digits - lhs.n_fractional_digits);
+        auto rhs_f = rhs.fractional * pow10(max_digits - rhs.n_fractional_digits);
         if (lhs_f == rhs_f)
             return true; // magnitudes are equal
         is_abs_rhs_greater_or_equal = lhs_f >= rhs_f;
@@ -259,168 +389,91 @@ std::ostream& operator<<(std::ostream& os, const RealNumber& number) {
 }
 
 RealNumber operator*(const RealNumber& lhs, const RealNumber& rhs) {
-    bool res_is_negative = lhs.is_negative != rhs.is_negative;
-    int res_n_digits = lhs.n_fractional_digits + rhs.n_fractional_digits;
+    const unsigned long long BASE = 1'000'000'000ull; // base 10^9
 
-    // (int1 + frac1/10^lhs.n) * (int2 + frac2/10^rhs.n) = int1 * int2 
-    //   + int1 * frac2/10^rhs.n  +  int2 * frac1/10^lhs.n  +  frac1/10^lhs.n * frac2/10^rhs.n
-    //  = int1 * int2
-    //   + (int1 * frac2 * 10^lhs.n  +  int2 * frac1 * 10^rhs.n  +  frac1 * frac2) / 10^(lhs.n + rhs.n)
-    // Calculate fractional contributions using a common denominator: 10^(lhs.n + rhs.n)
-    // Term 1: (lhs.integer * rhs.fractional) / 10^rhs.n * 10^lhs.n
-    //         (int1 * frac2/10^rhs.n) * 10^(lhs.n + rhs.n) = (int1 * frac2) * 10^lhs.n 
-    // Term 2: (rhs.integer * lhs.fractional) / 10^lhs.n * 10^rhs.n
-    //         (int2 * frac1/10^lhs.n) * 10^(lhs.n + rhs.n) = (int2 * frac1) * 10^rhs.n
-    // Term 3: (frac1/10^lhs.n * frac2/10^rhs.n) * 10^(lhs.n + rhs.n) = frac1 * frac2
+    // split into base-B polynomial: N = (A3*B + A2) + (A1*B^-1 + A0*B^-2)
+    // e.g., N = 12.000000000000000034 -> A3=0, A2=12, A1=0, A0=34
+    unsigned long long A[4] = {0, 0, 0, 0};
+    A[3] = rhs.integer / BASE; // 10^9 to 10^18
+    A[2] = rhs.integer % BASE; // 10^0 to 10^9
 
-    unsigned long long t1 = lhs.integer * rhs.fractional * static_cast<unsigned long long>(std::pow(10, lhs.n_fractional_digits));
-    unsigned long long t2 = rhs.integer * lhs.fractional * static_cast<unsigned long long>(std::pow(10, rhs.n_fractional_digits));
-    unsigned long long t3 = lhs.fractional * rhs.fractional;
+    // scale fractional to exactly 18 digits before extracting chunks
+    unsigned long long a_frac = rhs.fractional * pow10(18 - rhs.n_fractional_digits);
+    A[1] = a_frac / BASE;    // 10^-1 to 10^-9
+    A[0] = a_frac % BASE;    // 10^-10 to 10^-18
 
-    unsigned long long sum_frac = t1 + t2 + t3;
-    unsigned long long carry = 0;
-    unsigned long long res_frac = 0;
+    unsigned long long B[4] = {0, 0, 0, 0};
+    B[3] = lhs.integer / BASE;
+    B[2] = lhs.integer % BASE;
+    unsigned long long b_frac = lhs.fractional * pow10(18 - lhs.n_fractional_digits);
+    B[1] = b_frac / BASE;
+    B[0] = b_frac % BASE;
 
-    if (res_n_digits > 0) {
-        auto divisor = static_cast<unsigned long long>(std::pow(10, res_n_digits));
-        carry = sum_frac / divisor;
-        res_frac = sum_frac % divisor;
+    // polynomial multiplication: R[k] = sum(A[i] * B[j]) for i+j = k
+    // max product A[i]*B[j] < 10^18. max sum per R[k] <= 4 * 10^18.
+    // i.e., strictly bounded within uint64 max (~1.84 * 10^19) => overflow impossible
+    unsigned long long R[7] = {0, 0, 0, 0, 0, 0, 0};
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            R[i + j] += A[i] * B[j];
+        }
     }
 
-    unsigned long long res_int = (lhs.integer * rhs.integer) + carry;
+    // resolve carries sequentially from smallest exponent (10^-36) to largest (10^18)
+    for (int k = 0; k < 6; ++k) {
+        unsigned long long carry = R[k] / BASE;
+        R[k] %= BASE;
+        R[k + 1] += carry;
+    }
 
-    return RealNumber{
-        .integer = res_int,
-        .fractional = res_frac,
-        .n_fractional_digits = res_n_digits,
-        .is_negative = (res_int == 0 && res_frac == 0) ? false : res_is_negative
-    };
+    // guard digit rounding: R[1] represents 10^-19 to 10^-27.
+    // If R[1] >= B/2 (i.e., >= 0.5), round up the 18th fractional digit in R[2]
+    if (R[1] >= BASE / 2) {
+        ++R[2];
+        // Propagate rounding carries upward (e.g., 0.999...9 -> 1.0)
+        for (int k = 2; k < 6; ++k) {
+            if (R[k] != BASE)
+                break;
+            R[k] = 0;
+            ++R[k + 1];
+        }
+    }
+
+    RealNumber res;
+    res.is_negative = (rhs.is_negative != lhs.is_negative);
+
+    // reconstruct integer (R6*B^2 + R5*B^1 + R4*B^0)
+    // and fractional (R3*B^1 + R2*B^0, forming the 18 exact digits)
+    res.integer = R[6] * BASE * BASE + R[5] * BASE + R[4];
+    res.fractional = R[3] * BASE + R[2];
+    res.n_fractional_digits = 18;
+
+    res.clean_trailing_zeroes();
+
+    if (res.integer == 0 && res.fractional == 0)
+        res.is_negative = false;
+
+    return res;
 }
 
 RealNumber operator/(const RealNumber& lhs, const RealNumber& rhs) {
-    // TODO Use Newton-Raphson method
-    // FIXME Disclaimer: this code was written by AI!!!
+    RealNumber reciprocal = rhs.reciprocal();
 
+    // 1. initial estimate
+    RealNumber Q = lhs * reciprocal;
 
-    // 1. Sign and Zero Handling
-    bool res_is_negative = lhs.is_negative != rhs.is_negative;
-    if (rhs.integer == 0 && rhs.fractional == 0) {
-        throw std::runtime_error("Division by zero");
+    // 2. iterative Refinement (Goldschmidt division)
+    // We recover the lost precision by calculating exactly how much we missed,
+    // and adding the reciprocal of that remainder back into the quotient.
+    for (int i = 0; i < 2; ++i) { // 2 iterations are presumed to be enough
+        // calculate the exact missing remainder
+        RealNumber R = lhs - (rhs * Q);
+        if (R.integer == 0 && R.fractional == 0)
+            break;
+
+        // shift the missing precision back into the tail
+        Q = Q + (R * reciprocal);
     }
-    if (lhs.integer == 0 && lhs.fractional == 0) {
-        return RealNumber{0, 0, 0, false};
-    }
-
-    // 2. Determine target precision
-    const int TARGET_FRACTIONAL_DIGITS = 15; // A reasonable precision for unsigned long long
-
-    // Helper to get power of 10 safely using std::pow
-    auto get_pow10_ull = [](int exponent) -> unsigned long long {
-        if (exponent < 0) {
-            throw std::invalid_argument("Exponent for power of 10 cannot be negative.");
-        }
-        double p = std::pow(10.0, exponent);
-        // Check for overflow before casting to unsigned long long
-        if (p > std::numeric_limits<unsigned long long>::max() || p < 0) {
-            throw std::overflow_error("Power of 10 calculation overflowed unsigned long long");
-        }
-        return static_cast<unsigned long long>(std::round(p));
-    };
-
-    // 3. Convert lhs and rhs to large integers for division
-    // Calculate raw values (integer * 10^n_frac + fractional)
-    // This involves multiplying by powers of 10 and adding fractional parts.
-    // Overflow checks are crucial here.
-
-    unsigned long long lhs_frac_power = get_pow10_ull(lhs.n_fractional_digits);
-    unsigned long long lhs_raw_val = lhs.integer;
-    // Check for overflow before multiplication
-    if (lhs_frac_power != 0 && std::numeric_limits<unsigned long long>::max() / lhs_frac_power < lhs_raw_val) {
-        throw std::overflow_error("RealNumber overflow during division scaling (lhs integer part)");
-    }
-    lhs_raw_val *= lhs_frac_power;
-    // Check for overflow before addition
-    if (std::numeric_limits<unsigned long long>::max() - lhs.fractional < lhs_raw_val) {
-        throw std::overflow_error("RealNumber overflow during division scaling (lhs fractional part)");
-    }
-    lhs_raw_val += lhs.fractional;
-
-    unsigned long long rhs_frac_power = get_pow10_ull(rhs.n_fractional_digits);
-    unsigned long long rhs_raw_val = rhs.integer;
-    // Check for overflow before multiplication
-    if (rhs_frac_power != 0 && std::numeric_limits<unsigned long long>::max() / rhs_frac_power < rhs_raw_val) {
-        throw std::overflow_error("RealNumber overflow during division scaling (rhs integer part)");
-    }
-    rhs_raw_val *= rhs_frac_power;
-    // Check for overflow before addition
-    if (std::numeric_limits<unsigned long long>::max() - rhs.fractional < rhs_raw_val) {
-        throw std::overflow_error("RealNumber overflow during division scaling (rhs fractional part)");
-    }
-    rhs_raw_val += rhs.fractional;
-
-    // We are effectively calculating:
-    // (lhs_raw_val / 10^lhs.n_fractional_digits) / (rhs_raw_val / 10^rhs.n_fractional_digits)
-    // = (lhs_raw_val * 10^rhs.n_fractional_digits) / (rhs_raw_val * 10^lhs.n_fractional_digits)
-
-    // To get TARGET_FRACTIONAL_DIGITS in the result, we need to multiply the numerator by 10^TARGET_FRACTIONAL_DIGITS.
-    // So, the final division is:
-    // (lhs_raw_val * 10^(rhs.n_fractional_digits + TARGET_FRACTIONAL_DIGITS)) / (rhs_raw_val * 10^lhs.n_fractional_digits)
-
-    int net_exponent_for_numerator = rhs.n_fractional_digits + TARGET_FRACTIONAL_DIGITS - lhs.n_fractional_digits;
-
-    unsigned long long final_numerator_for_division = lhs_raw_val;
-    unsigned long long final_denominator_for_division = rhs_raw_val;
-
-    if (net_exponent_for_numerator > 0) {
-        unsigned long long scale_factor = get_pow10_ull(net_exponent_for_numerator);
-        if (scale_factor != 0 && std::numeric_limits<unsigned long long>::max() / scale_factor < final_numerator_for_division) {
-            throw std::overflow_error("RealNumber overflow during division scaling (final numerator)");
-        }
-        final_numerator_for_division *= scale_factor;
-    } else if (net_exponent_for_numerator < 0) {
-        // This means the denominator needs to be scaled up.
-        unsigned long long scale_factor = get_pow10_ull(-net_exponent_for_numerator);
-        if (scale_factor != 0 && std::numeric_limits<unsigned long long>::max() / scale_factor < final_denominator_for_division) {
-            throw std::overflow_error("RealNumber overflow during division scaling (final denominator)");
-        }
-        final_denominator_for_division *= scale_factor;
-    }
-
-    // Perform the integer division
-    unsigned long long result_raw = final_numerator_for_division / final_denominator_for_division;
-    unsigned long long remainder = final_numerator_for_division % final_denominator_for_division;
-
-    // Rounding: check if the remainder is half or more of the divisor
-    if (remainder * 2 >= final_denominator_for_division) {
-        result_raw++;
-    }
-
-    // Extract integer and fractional parts from result_raw
-    unsigned long long target_frac_power = get_pow10_ull(TARGET_FRACTIONAL_DIGITS);
-    unsigned long long res_integer = result_raw / target_frac_power;
-    unsigned long long res_fractional = result_raw % target_frac_power;
-
-    // Special handling for negative zero
-    if (res_integer == 0 && res_fractional == 0) {
-        res_is_negative = false;
-    }
-
-    // Normalize fractional part by trimming trailing zeros
-    int final_n_fractional_digits = TARGET_FRACTIONAL_DIGITS;
-    if (res_fractional != 0) {
-        while (res_fractional % 10 == 0 && final_n_fractional_digits > 0) {
-            res_fractional /= 10;
-            final_n_fractional_digits--;
-        }
-    } else {
-        final_n_fractional_digits = 0; // If fractional part is 0, then 0 fractional digits
-    }
-
-    return RealNumber{
-        .integer = res_integer,
-        .fractional = res_fractional,
-        .n_fractional_digits = final_n_fractional_digits,
-        .is_negative = res_is_negative
-    };
+    return Q.reduce_noise().clean_trailing_zeroes();
 }
-
+}
