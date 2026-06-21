@@ -67,7 +67,7 @@ underlying_t Interpreter::compilePrint(const std::unique_ptr<ASTNode>& astNode) 
             } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
                 std::cout << to_string(value);
             } else if constexpr (std::is_same_v<std::decay_t<T>, std::shared_ptr<UserFunction>>) {
-                std::cout << "<fun " << value->name << ">";
+                std::cout << "<fn " << value->name << ">";
             } else {
                 std::cout << value;
             }
