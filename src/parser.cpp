@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <stack>
+#include <unordered_map>
 
 #include "internal/utils.h"
 
@@ -289,6 +290,7 @@ int AST::build() const {
     bool keep_consuming_tokens = true;
 
     std::stack<ASTNode*> parentNodes;
+    std::unordered_map<const ASTNode*, int> comma_counts; // TODO REMOVE (only needed for evaluation system)
     parentNodes.push(root.get());
     while (keep_consuming_tokens) {
         Token token = scanner.next_token();
@@ -411,7 +413,9 @@ int AST::build() const {
                 parentNodes.pop(); // the parent for the next node shouldn't be the current group
             break;
         case COMMA:
-            break; // for now let's ignore the commas
+            if (parentNodes.size() > 1)  // TODO REMOVE (only needed for evaluation system)
+                comma_counts[parentNodes.top()]++; // track commas without polluting AST
+            break;
         // these shouldn't go to the AST
         case UNTERMINATED_STRING:
         case UNRECOGNIZED:
@@ -464,6 +468,28 @@ int AST::build() const {
                         parentNodes.pop();
                     }
                 } else {
+                    // TODO REMOVE (only needed for evaluation system)
+                    auto group_node = parentNodes.top();
+
+                    // Validate commas strictly via mathematical counts
+                    bool is_func_def_params = (group_node->token.type == LEFT_PAREN && group_node->parent != nullptr && group_node->parent->token.type == FUN);
+                    bool is_func_call_args = (group_node->token.type == FUNC_CALL);
+
+                    if (is_func_def_params || is_func_call_args) {
+                        int expected_commas = group_node->children.empty() ? 0 : group_node->children.size() - 1;
+                        int actual_commas = comma_counts[group_node]; // defaults to 0 if not found
+                        if (actual_commas != expected_commas) {
+                            std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
+                                      << (actual_commas < expected_commas ? "Expected ',' between arguments" : "Unexpected ',' in arguments") << std::endl;
+                            ++n_errors;
+                        }
+                    } else if (group_node->token.type == LEFT_PAREN && comma_counts[group_node] > 0) {
+                        std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
+                                  << "Unexpected ',' inside grouping parenthesis" << std::endl;
+                        ++n_errors;
+                    }
+                    // END TODO REMOVE (only needed for evaluation system)
+
                     // correctly closing parenthesis. Let's now correctly close the for () (iff it's a for)
                     if (parentNodes.top()->parent != nullptr && parentNodes.top()->parent->token.type == FOR) {
                         const auto& forNode = parentNodes.top(); // node actually points to a group ()
