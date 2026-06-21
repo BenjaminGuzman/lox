@@ -152,6 +152,7 @@ Token Scanner::_next_token() {
         case '-':
         case '+':
         case ';':
+        case ':':
         case '*': {
             auto lexeme = std::string(1, c);
             return Token{TOKEN_STRING_MAPPING.at(lexeme), lexeme, std::monostate{}, line, col};

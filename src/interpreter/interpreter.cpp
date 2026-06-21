@@ -109,8 +109,8 @@ underlying_t Interpreter::compileParenthesis(const std::unique_ptr<ASTNode>& ast
 
 underlying_t Interpreter::execute(const std::unique_ptr<ASTNode>& root) const {
     // TODO write an interpreter (and a compiler) that works bottom-up, no stack-overflow
-    if (TOKEN_COMPILERS.contains(root->token.type))
-        return TOKEN_COMPILERS.at(root->token.type)(root);
+    if (auto it = TOKEN_COMPILERS.find(root->token.type); it != TOKEN_COMPILERS.end())
+        return it->second(root);
 
     // no handler was defined for this token, let's try to resolve it, maybe it's a symbol?
     //  or... it simply doesn't need to resolve to nothing, e.g., ';' resolves to monostate

@@ -1,6 +1,9 @@
 #include "interpreter.h"
 
 #include <ranges>
+#include <algorithm>
+
+#include "interpreter/user_function.h"
 
 namespace lox {
 underlying_t Interpreter::compileEqual(const std::unique_ptr<ASTNode>& astNode) {
@@ -72,20 +75,58 @@ underlying_t Interpreter::compileLeftBrace(const std::unique_ptr<ASTNode>& astNo
     return ret;
 }
 
-underlying_t Interpreter::compileFuncCall(const std::unique_ptr<ASTNode> &astNode) {
+std::vector<underlying_t> Interpreter::compileFuncCall(const std::unique_ptr<ASTNode> &astNode) {
     std::string funcName = astNode->token.lexeme;
     size_t n_expected_args = astNode->children.size();
     std::string funcSignature = funcName + "_" + std::to_string(n_expected_args);
-    if (NATIVE_FUNCTIONS.contains(funcSignature)) // try matching by the exact signature (name + args)
-        return NATIVE_FUNCTIONS[funcSignature](astNode.get(), *this);
-    if (NATIVE_FUNCTIONS.contains(funcName)) {
+
+    if (const auto it = NATIVE_FUNCTIONS.find(funcSignature); it != NATIVE_FUNCTIONS.end())
+        // try matching by the exact signature (name + args)
+        return {it->second(astNode.get(), *this)};
+    if (const auto it = NATIVE_FUNCTIONS.find(funcName); it != NATIVE_FUNCTIONS.end())
         // try matching by func name (meaning it's a vararg func)
-        auto f = NATIVE_FUNCTIONS[funcName];
-        return NATIVE_FUNCTIONS[funcName](astNode.get(), *this);
+        return {it->second(astNode.get(), *this)};
+    if (const auto it = USER_FUNCTIONS.find(funcSignature); it != USER_FUNCTIONS.end())
+        // if not a native function, try a user-defined function
+        return it->second(*this, astNode->children);
+
+    this->registerError("Function '" + funcName + "' does not exists", astNode->token);
+    return {std::monostate()};
+}
+
+underlying_t Interpreter::compileFunc(const std::unique_ptr<ASTNode> &astNode) {
+    if (astNode->children.size() != 3) {
+        this->registerError("Function declaration is invalid", astNode->token);
+        return std::monostate();
     }
 
-    // TODO search in the user-defined functions
-    this->registerError("Function '" + funcName + "' does not exists", astNode->token);
+    std::string funcName = astNode->children[0]->token.lexeme;
+    const auto& funcParams = astNode->children[1];
+    const auto& funcBody = astNode->children[2];
+
+    std::vector<std::string> paramNames(funcParams->children.size());
+    std::ranges::transform(funcParams->children, paramNames.begin(), [](const std::unique_ptr<ASTNode>& child) {
+        return child->token.lexeme;
+    });
+
+    // add the function to the symbol table
+    std::string funcSig = funcName + "_" + std::to_string(funcParams->children.size());
+    USER_FUNCTIONS.emplace(funcSig, UserFunction{
+        .name = astNode->children[0]->token.lexeme,
+        .paramNames = paramNames,
+        .funcBody = funcBody
+    });
+
+    return funcSig;
+}
+
+underlying_t Interpreter::compileReturn(const std::unique_ptr<ASTNode> &astNode) {
+    std::vector<underlying_t> returnValues = astNode->children
+       | std::views::transform([this](const std::unique_ptr<ASTNode>& node) {
+           return this->resolveOrExecute(node);
+       })
+       | std::ranges::to<std::vector<underlying_t>>();
+    this->returnFunctions.back()(returnValues);
     return std::monostate();
 }
 }

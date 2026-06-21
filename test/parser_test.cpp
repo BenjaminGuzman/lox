@@ -337,3 +337,89 @@ TEST(ParserTest, ForStatementSimpleBody) {
     std::string result = parse_and_serialize("for (i = 0; i < 5; i = i + 1) print i;");
     EXPECT_EQ(result, "(for (group (= i 0.0) (< i 5.0) (= i (+ i 1.0))) (print i))");
 }
+
+TEST(ParserTest, UserDeclaredFunc) {
+    std::string result = parse_and_serialize(R"(
+fun sayHi(first, last) {
+  print "Hi, " + first + " " + last + "!";
+}
+)");
+    EXPECT_EQ(result, "(fun sayHi (group first last) ({ (print (+ (+ (+ (+ Hi,  first)  ) last) !))))");
+}
+
+TEST(ParserTest, UserDeclaredFuncNoArgs) {
+    std::string result = parse_and_serialize(R"(
+fun count() {
+  print 1;
+}
+)");
+    EXPECT_EQ(result, "(fun count (group) ({ (print 1.0)))");
+}
+
+TEST(ParserTest, FunctionCall) {
+    std::string result = parse_and_serialize("add(1, 2);");
+    EXPECT_EQ(result, "(call add 1.0 2.0)");
+}
+
+// TEST(ParserTest, FunctionCallComplex) {
+    // std::string result = parse_and_serialize("getCallback()(arg1, arg2);");
+    // EXPECT_EQ(result, "(call (call getCallback) (arg1 arg2))");
+// }
+
+TEST(ParserTest, ReturnStatement) {
+    std::string result = parse_and_serialize("fun f() { var x = 10; var y = 20; return x, y; }");
+    EXPECT_EQ(result, "(fun f (group) ({ (var (= x 10.0)) (var (= y 20.0)) (return x y)))");
+}
+
+TEST(ParserTest, ReturnEmpty) {
+    std::string result = parse_and_serialize(R"(fun f() {
+    if true
+        return "if true";
+    else if false
+        return "if false";
+    else
+        return "otherwise";
+})");
+    EXPECT_EQ(result, "(fun f (group) ({ (if true "
+                        "(return if true) "
+                        "(if false "
+                            "(return if false) "
+                            "(return otherwise)))))");
+
+}
+
+TEST(ParserTest, FunctionCallNamedArgs) {
+    std::string result = parse_and_serialize("f(arg1: true, arg2: variable == 10);");
+    EXPECT_EQ(result, "(call f (: arg1 true) (: arg2 (== variable 10.0)))");
+}
+
+TEST(ParserTest, FunctionCallNamedArgs2) {
+    std::string result = parse_and_serialize("f(arg1: true, arg2: variable = 10);");
+    EXPECT_EQ(result, "(call f (: arg1 true) (: arg2 (= variable 10.0)))");
+}
+
+TEST(ParserTest, FunctionCallMixedArgs) {
+    // Positional followed by named
+    std::string result = parse_and_serialize("f(1, 2, verbose: true);");
+    EXPECT_EQ(result, "(call f 1.0 2.0 (: verbose true))");
+}
+
+TEST(ParserTest, FunctionCallPositionalOnly) {
+    std::string result = parse_and_serialize("f(1, \"hello\", x);");
+    EXPECT_EQ(result, "(call f 1.0 hello x)");
+}
+
+TEST(ParserTest, FunctionCallComplexNamedArgs) {
+    std::string result = parse_and_serialize("calculate(base: 100, factor: getMultiplier(2), offset: -5);");
+    EXPECT_EQ(result, "(call calculate (: base 100.0) (: factor (call getMultiplier 2.0)) (: offset (- 5.0)))");
+}
+
+TEST(ParserTest, FunctionDeclarationAndCallNamed) {
+    std::string result = parse_and_serialize(R"(
+fun greet(name, greeting) {
+  print greeting + ", " + name;
+}
+greet(greeting: "Hello", name: "User");
+)");
+    EXPECT_EQ(result, "(fun greet (group name greeting) ({ (print (+ (+ greeting , ) name))))(call greet (: greeting Hello) (: name User))");
+}

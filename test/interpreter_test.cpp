@@ -707,3 +707,102 @@ for (; i <= 3;) {
     ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(4, 0, 0, false));
 }
+
+TEST(InterpreterIntegrationTest, FunctionDefinitionAndCall) {
+    underlying_t result = interpret_expression(R"(
+fun add(a, b) {
+    return a + b;
+}
+add(5, 10);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(15, 0, 0, false));
+}
+
+// TEST(InterpreterIntegrationTest, FunctionClosure) {
+//     underlying_t result = interpret_expression(R"(
+// fun makeCounter() {
+//     var i = 0;
+//     fun count() {
+//         i = i + 1;
+//         return i;
+//     }
+//     return count;
+// }
+// var counter = makeCounter();
+// counter();
+// counter();
+// )");
+    // ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    // ASSERT_EQ(get_value<RealNumber>(result), RealNumber(2, 0, 0, false));
+// }
+
+TEST(InterpreterIntegrationTest, RecursiveFunction) {
+    underlying_t result = interpret_expression(R"(
+fun fib(n) {
+    if (n <= 1) return n;
+    return fib(n - 1) + fib(n - 2);
+}
+fib(6);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(8, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, FunctionNoReturn) {
+    underlying_t result = interpret_expression(R"(
+fun sayHi(name) {
+    print "Hi, " + name + "!";
+}
+sayHi("Lox");
+)");
+    // Functions without an explicit return statement return nil
+    ASSERT_TRUE(std::holds_alternative<std::nullptr_t>(result));
+}
+
+TEST(InterpreterIntegrationTest, FunctionNamedArguments) {
+    underlying_t result = interpret_expression(R"(
+fun subtract(a, b) {
+    return a - b;
+}
+subtract(b: 5, a: 20);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(15, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, FunctionMixedArguments) {
+    underlying_t result = interpret_expression(R"(
+fun volume(length, width, height) {
+    return length * width * height;
+}
+// Positional for length, named for width and height
+volume(10, height: 2, width: 5);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(100, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, FunctionNamedArgumentsWithExpressions) {
+    underlying_t result = interpret_expression(R"(
+fun check(first, second) {
+    if (first) return second;
+    return 0;
+}
+var x = 10;
+check(second: x + 5, first: x == 10);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(15, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, FunctionPositionalOnly) {
+    underlying_t result = interpret_expression(R"(
+fun multiply(x, y) {
+    return x * y;
+}
+multiply(4, 5);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(20, 0, 0, false));
+}

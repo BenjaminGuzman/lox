@@ -297,7 +297,9 @@ int AST::build() const {
         case PRINT:
         case IF:
         case FOR:
-        case WHILE: {
+        case WHILE:
+        case RETURN:
+        case FUN: {
             auto operator_node = std::make_unique<ASTNode>(ASTNode{
                 .token = token,
                 .parent = parent,
@@ -332,9 +334,9 @@ int AST::build() const {
             break;
         }
         case SEMICOLON:
-            if (parentNodes.top()->token.type == PRINT) {
-                // print statement args end when the ';' is found
-                if (parentNodes.top()->children.empty())
+            if (parentNodes.top()->token.type == PRINT || parentNodes.top()->token.type == RETURN) {
+                // print/return statement args end when the ';' is found
+                if (parentNodes.top()->children.empty() && parentNodes.top()->token.type == PRINT)
                     // According to evaluation system: Print statements expect an expression,
                     // i.e., print should have children
                     ++n_errors;
@@ -380,6 +382,8 @@ int AST::build() const {
             }
             parentNodes.pop(); // the parent for the next node shouldn't be the current group
             break;
+        case COMMA:
+            break; // for now let's ignore the commas
         // these shouldn't go to the AST
         case UNTERMINATED_STRING:
         case UNRECOGNIZED:
@@ -401,9 +405,9 @@ int AST::build() const {
                 break;
             }
 
-            // handle assignment operator
+            // handle assignment operator (or, colon :, for named args
             // tree should look like (=) -> {identifier, value}
-            if (next.type == EQ) {
+            if (next.type == EQ || next.type == COLON) {
                 auto assignmentNode = std::make_unique<ASTNode>(ASTNode{
                     .token = next,
                     .parent = parent,
@@ -449,7 +453,8 @@ int AST::build() const {
                 parentNodes.pop(); // the parent for the next node shouldn't be the current group
                 break;
             case IDENTIFIER:
-                if (scanner.peek_next().type == LEFT_PAREN) { // it's a function call <function id>()
+                if (scanner.peek_next().type == LEFT_PAREN // it's a function call <function id>()
+                    && parentNodes.top()->token.type != FUN /* but not a function definition */) {
                     auto _ = scanner.next_token(); // discard the (
 
                     // in the end, the tree should contain Token{function name} ->(as children) {function args}

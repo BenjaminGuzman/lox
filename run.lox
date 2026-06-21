@@ -1,3 +1,13 @@
+//clock(;
+fun f() 74;
+fun() {};
+fun hola(a, b c) {
+
+}
+fun sayHello() {
+    print "Hello!";
+}
+
 print clock();
 print clock() + 20;
 print clock() / 1000;

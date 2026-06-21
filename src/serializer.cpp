@@ -64,6 +64,8 @@ void add_to_buff(const ASTNode* node, std::stringstream& buff) {
     case LEFT_PAREN:
         buff << "group";
         return;
+    case FUNC_CALL:
+        buff << "call ";
     default: {}
     }
 

@@ -31,6 +31,7 @@ enum TokenType {
     RIGHT_BRACE,
     COMMA,
     DOT,
+    COLON,
     MINUS,
     PLUS,
     SEMICOLON,
@@ -88,6 +89,7 @@ inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {
     {"}", RIGHT_BRACE},
     {",", COMMA},
     {".", DOT},
+    {":", COLON},
     {"-", MINUS},
     {"+", PLUS},
     {";", SEMICOLON},
@@ -129,6 +131,7 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
     {RIGHT_BRACE, NOT_OPERATOR},
     {COMMA, BINARY}, // ?
     {DOT, NOT_OPERATOR}, // ?
+    {COLON, BINARY}, // ?
     {MINUS, UNARY_OR_BINARY},
     {PLUS, UNARY_OR_BINARY},
     {SEMICOLON, NOT_OPERATOR},
@@ -151,13 +154,20 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
     {FALSE, NOT_OPERATOR},
 
     /**
-     * for receives a group (which is ternary and contains the init, condition, increment) and an execution
+     * for receives a group (which is ternary and contains the init, condition, increment) and an execution body
      * i.e., it's a binary op
      */
     {FOR, BINARY},
     {WHILE, BINARY},
-    {FUN, NOT_OPERATOR},
-    {RETURN, NOT_OPERATOR},
+
+    /**
+     * fun receives <func name>(<args...>) {<body>}, so it's a ternary "operator":
+     * 1. name
+     * 2. args
+     * 3. body
+     */
+    {FUN, TERNARY},
+    {RETURN, MULTI}, // return accepts multiple args to be returned
     {SUPER, NOT_OPERATOR},
     {THIS, NOT_OPERATOR},
     {VAR, UNARY},
@@ -338,11 +348,14 @@ uint16_t BasicToken<T>::op_priority() const {
 
     // all these should have less priority
     case WHILE:
+    case FUN:
     case FOR:
     case IF:
     case EQ: // equal operator should have the less priority, e.g., in isAdult = x >= 15
              //  x >= 15, should be executed first
         return 1;
+    // case COLON: // arg1: variable = value should compile as (: (= variable value)) (looks like this is not needed)
+        // return 0;
     }
 }
 

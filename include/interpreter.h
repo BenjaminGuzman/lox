@@ -7,6 +7,7 @@
 
 #include "parser.h"
 #include "interpreter/stackframe.h"
+#include "interpreter/user_function.h"
 
 namespace lox {
 /**
@@ -18,12 +19,20 @@ using registerErrorF = std::function<void(const std::string& msg, const Token& t
 
 class Interpreter {
 private:
-    registerErrorF registerError;
+    const registerErrorF registerError;
 
     /**
      * The execution stack
      */
     std::vector<Stackframe> stack;
+
+    /**
+     * Stack of callback functions to be executed when found a return statement
+     * Each callback corresponds to a function in execution, i.e., if there are 2 callbacks in the stack,
+     * that means there are 2 functions being executed, the callback at the top of the stack, when called, will make
+     * the most recent executed function return
+     */
+    std::vector<std::function<void(std::vector<underlying_t>& returnValues)>> returnFunctions;
 
     /**
      * Symbol table for user-defined functions
@@ -35,7 +44,7 @@ private:
      * Points to the '{' token of the function, i.e., the block of the function that should run,
      * i.e., running that node will effectively run the function
      */
-    std::unordered_map<std::string, ASTNode*> USER_FUNCTIONS;
+    std::unordered_map<std::string, UserFunction> USER_FUNCTIONS;
 
     /**
      * Symbol table for native functions
@@ -84,30 +93,6 @@ private:
     bool compileOnlyRealNumberDefinedBinaryOperator(const std::unique_ptr<ASTNode>& astNode, std::function<bool(const RealNumber&, const RealNumber&)> op) const;
     // FIXME END FIXME
 
-    /**
-     * Resolves the value for a token
-     *
-     * This will only resolve the token in the following cases:
-     * - If it represents a number, the number is returned
-     * - If it represents a string, the string is returned
-     * - If it represents an identifier (aka variable), the value of the symbol is returned
-     * - If it represents a boolean, the boolean is returned
-     * - If it represents a null/nil, the null is returned
-     *
-     * For any other cases, this will return @link std::monostate @endlink
-     * @param token the token
-     * @return the resolved value of the token
-     */
-    [[nodiscard]] underlying_t resolveToken(const Token& token) const;
-
-    /**
-     * Resolves the value of the node by calling @link resolveToken(const Token&) @endlink,
-     * or by calling @link execute(const std::unique_ptr<ASTNode>&) @endlink if needed.
-     * @param node the node whose value shall be resolved
-     * @return the resolved value of the node
-     */
-    [[nodiscard]] underlying_t resolveOrExecute(const std::unique_ptr<ASTNode>& node) const;
-
     [[nodiscard]] underlying_t compileNumber(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileString(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compilePlus(const std::unique_ptr<ASTNode>& astNode) const;
@@ -127,11 +112,13 @@ private:
 
     [[nodiscard]] underlying_t compilePrint(const std::unique_ptr<ASTNode>& astNode) const;
 
-    // these functions modify the state (namely, the stack) of the interpreter
+    // these functions modify the state (namely, the stack or the symbol table) of the interpreter
     [[nodiscard]] underlying_t compileEqual(const std::unique_ptr<ASTNode>& astNode);
     [[nodiscard]] underlying_t compileVar(const std::unique_ptr<ASTNode>& astNode);
     [[nodiscard]] underlying_t compileLeftBrace(const std::unique_ptr<ASTNode>& astNode);
-    [[nodiscard]] underlying_t compileFuncCall(const std::unique_ptr<ASTNode>& astNode);
+    [[nodiscard]] std::vector<underlying_t> compileFuncCall(const std::unique_ptr<ASTNode>& astNode);
+    [[nodiscard]] underlying_t compileFunc(const std::unique_ptr<ASTNode>& astNode);
+    [[nodiscard]] underlying_t compileReturn(const std::unique_ptr<ASTNode>& astNode);
 
     [[nodiscard]] underlying_t compileIf(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] underlying_t compileWhile(const std::unique_ptr<ASTNode>& astNode) const;
@@ -165,7 +152,9 @@ private:
         {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
         {VAR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
         {LEFT_BRACE, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
-        {FUNC_CALL,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFuncCall(astNode);}},
+        {FUNC_CALL,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFuncCall(astNode)[0];}}, // FIXME add support for multi-return
+        {FUN,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFunc(astNode);}},
+        {RETURN,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileReturn(astNode);}}, // FIXME add support for multi-return
 
         {IF,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},
         {WHILE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileWhile(astNode);}},
@@ -214,6 +203,32 @@ public:
                 it.symbols.erase(symbol);
             }
     }
+
+    /**
+     * Resolves the value for a token
+     *
+     * This will only resolve the token in the following cases:
+     * - If it represents a number, the number is returned
+     * - If it represents a string, the string is returned
+     * - If it represents an identifier (aka variable), the value of the symbol is returned
+     * - If it represents a boolean, the boolean is returned
+     * - If it represents a null/nil, the null is returned
+     *
+     * For any other cases, this will return @link std::monostate @endlink
+     * @param token the token
+     * @return the resolved value of the token
+     */
+    [[nodiscard]] underlying_t resolveToken(const Token& token) const;
+
+    /**
+     * Resolves the value of the node by calling @link resolveToken(const Token&) @endlink,
+     * or by calling @link execute(const std::unique_ptr<ASTNode>&) @endlink if needed.
+     * @param node the node whose value shall be resolved
+     * @return the resolved value of the node
+     */
+    [[nodiscard]] underlying_t resolveOrExecute(const std::unique_ptr<ASTNode>& node) const;
+
+    friend class UserFunction;
 };
 
 [[nodiscard]] std::string to_string(bool b);

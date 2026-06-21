@@ -42,6 +42,7 @@ set(INTERPRETER_SOURCES
         src/interpreter/control_statements.cpp
         src/interpreter/logical_operators.cpp
         src/interpreter/native_functions.cpp
+        src/interpreter/user_function.cpp
         src/interpreter/comparison_operators.cpp)
 add_library(lox-interpreter STATIC ${INTERPRETER_SOURCES})
 target_include_directories(lox-interpreter PRIVATE include/)
