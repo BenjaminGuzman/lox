@@ -35,20 +35,13 @@ private:
     std::vector<std::function<void(std::vector<underlying_t>& returnValues)>> returnFunctions;
 
     /**
-     * Symbol table for user-defined functions
-     * the key for this map is the signature, composed of the function's name and
-     * the number of parameters, i.e.,
-     * for the function eat(x, y) the name is "eat_2".
-     * All of the parameters should be of type underlying_t
-     *
-     * Points to the '{' token of the function, i.e., the block of the function that should run,
-     * i.e., running that node will effectively run the function
+     * Flag that tells whether the stack should be unwinded, e.g., a return statement has been executed.
      */
-    std::unordered_map<std::string, UserFunction> USER_FUNCTIONS;
+    bool shouldUnwindStack = false;
 
     /**
-     * Symbol table for native functions
-     * the key for this map is the signature, composed of the function's name and
+     * Registers the global native functions into the first stackframe of the program.
+     * the "name" of the functions is actually their signature, composed of the function's name and
      * the number of parameters, i.e.,
      * for the function clock(), the name is "clock_0",
      * for clock(string), the name is "clock_1",
@@ -56,10 +49,8 @@ private:
      *
      * The signature was decided to include the number of args instead of their types
      * (e.g., "clock_string") 'cause the lang is loosely typed.
-     *
-     * The function receives the @link FUNC_CALL @endlink node
      */
-    static std::unordered_map<std::string, std::function<underlying_t(ASTNode*, Interpreter&)>> NATIVE_FUNCTIONS;
+    void registerGlobalNativeFunctions();
 
     /**
      *
@@ -177,6 +168,7 @@ public:
      */
     Interpreter(registerErrorF registerError) : registerError(std::move(registerError)) {
         this->stack.emplace_back();
+        this->registerGlobalNativeFunctions();
     };
 
     /**
@@ -185,6 +177,14 @@ public:
     Interpreter() : Interpreter([](const std::string& msg, const Token& token) {
         std::cerr << msg << std::endl;
     }) {}
+
+    /**
+     * Searches in the stack for the given symbol. Search is done top to bottom, i.e., latest variable that matches will
+     * be always returned first
+     * @param symbolName the name of the symbol to search for
+     * @return the value of the symbol, or @link std::monostate @endlink if not found
+     */
+    [[nodiscard]] underlying_t getVar(const std::string& symbolName) const;
 
     /**
      * Executes/evaluates an ASTNode.

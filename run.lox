@@ -1,13 +1,24 @@
+fun makeGreeter() {
+  fun greet(name) {
+    print "Hello " + name;
+  }
+  return greet;
+}
+
+var sayHello = makeGreeter();
+sayHello("Bob");
+
+
+print clock();
 //clock(;
 //print clock)));
 //fun f() 74;
 //fun() {};
-fun hola(a, b c) {
-    print a;
-    print b;
-    print c;
+fun f() {
+  return;
+  print "bad";
 }
-hola(1 2 3)
+print f();
 fun sayHello() {
     print "Hello!";
 }

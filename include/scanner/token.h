@@ -3,13 +3,18 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include <memory>
 
 #include "real_number.h"
+
+namespace lox {
+    class UserFunction;
+}
 
 // the actual memory used for a variable will be the biggest type here...
 // so it's not very efficient, but way more efficient than storing as unique_ptr, or void*, or something else...
 // std::monostate for those tokens that do not represent a literal value
-using underlying_t = std::variant<std::monostate, std::string, lox::RealNumber, bool, nullptr_t, std::string_view>;
+using underlying_t = std::variant<std::monostate, std::string, lox::RealNumber, bool, nullptr_t, std::string_view, std::shared_ptr<lox::UserFunction>>;
 
 // Token operator type
 enum TokenOpType {

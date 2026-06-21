@@ -26,7 +26,7 @@ underlying_t Interpreter::compileWhile(const std::unique_ptr<ASTNode>& astNode) 
 
     underlying_t ret;
     underlying_t condition = this->resolveOrExecute(astNode->children[0]);
-    while (is_truthy(condition)) {
+    while (is_truthy(condition) && !shouldUnwindStack) {
         ret = this->resolveOrExecute(astNode->children[1]);
         condition = this->resolveOrExecute(astNode->children[0]);
     }
@@ -56,7 +56,7 @@ underlying_t Interpreter::compileFor(const std::unique_ptr<ASTNode>& astNode) {
     stack.emplace_back(); // open a new stackframe for the for loop
     auto _ = this->resolveOrExecute(forGroup->children[0]); // execute initialization
     const auto& condition = forGroup->children[1];
-    while (is_truthy(this->resolveOrExecute(condition))) {
+    while (is_truthy(this->resolveOrExecute(condition)) && !shouldUnwindStack) {
         _ = this->resolveOrExecute(forExec); // execute execute statement
         auto _discarded = this->resolveOrExecute(forGroup->children[2]); // execute increment
     }

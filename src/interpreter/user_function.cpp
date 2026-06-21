@@ -35,22 +35,27 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
     }
 
     std::vector<underlying_t> retValues;
-    bool shouldReturn = false;
-    interpreter.returnFunctions.emplace_back([&retValues, &shouldReturn](std::vector<underlying_t>& ret) {
-        retValues = std::move(ret);
-        shouldReturn = true;
-    });
 
-    // execute the function
-    for (const auto& statement : this->funcBody->children) {
-        auto _ = interpreter.execute(statement);
-        if (shouldReturn)
-            break;
+    if (isNative) {
+        retValues = nativeFunc(args, interpreter);
+    } else {
+        interpreter.returnFunctions.emplace_back([&retValues, &interpreter](std::vector<underlying_t>& ret) {
+            retValues = std::move(ret);
+            interpreter.shouldUnwindStack = true;
+        });
+
+        // execute the function
+        for (const auto& statement : this->funcBody->children) {
+            auto _ = interpreter.execute(statement);
+            if (interpreter.shouldUnwindStack)
+                break;
+        }
+        interpreter.returnFunctions.pop_back();
     }
 
     // pop the function's stackframe, avoid memory leaks!
     interpreter.stack.pop_back();
-    interpreter.returnFunctions.pop_back();
+    interpreter.shouldUnwindStack = false;
 
     if (retValues.empty())
         return {nullptr};

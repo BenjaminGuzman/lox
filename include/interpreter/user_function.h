@@ -9,7 +9,7 @@ namespace lox {
 class Interpreter;
 
 /**
- * Represents a user-defined function
+ * Represents a function that can be used in lox
  */
 class UserFunction {
 public:
@@ -29,6 +29,17 @@ public:
      * that contains the full body of the function
      */
     const std::unique_ptr<ASTNode>& funcBody;
+
+    /**
+     * If the function is a native function, this field stores it. This implies @link isNative @endlink is true
+     * Function receives the function args, and the interpreter the function may use (e.g., to resolve variables)
+     */
+    const std::function<std::vector<underlying_t>(const std::vector<std::unique_ptr<ASTNode>>&, Interpreter&)> nativeFunc = nullptr;
+
+    /**
+     * Tells whether the function is a user-defined or a native function
+     */
+    const bool isNative = false;
 
     /**
      * Execute the user-defined function with the given arguments

@@ -5,6 +5,13 @@
 #include "internal/utils.h"
 
 namespace lox {
+underlying_t Interpreter::getVar(const std::string &symbolName) const {
+    for (const auto& it : std::views::reverse(stack))
+        if (auto varIt = it.symbols.find(symbolName); varIt != it.symbols.end())
+            return varIt->second;
+    return std::monostate();
+}
+
 underlying_t Interpreter::resolveToken(const Token& token) const {
     switch (token.type) {
     case STRING:
@@ -19,15 +26,11 @@ underlying_t Interpreter::resolveToken(const Token& token) const {
     case NIL:
         return nullptr;
     case IDENTIFIER:
-        // search from the innermost scope (top of stack) to the global scope (bottom)
-        for (const auto& it : std::views::reverse(stack))
-            if (it.symbols.contains(token.lexeme))
-                return it.symbols.at(token.lexeme);
-        // it may be a function (evaluation system expects this)
-        if (auto it = USER_FUNCTIONS.find(token.lexeme); it != USER_FUNCTIONS.end())
-            return "<fn " + token.lexeme + ">";
-        this->registerError("Undefined variable '" + token.lexeme + "'.", token);
-        return std::monostate();
+        return std::visit([this, &token]<typename E>(E&& var) -> underlying_t {
+            if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>) // monostate => variable not found in stack
+                this->registerError("Undefined variable '" + token.lexeme + "'.", token);
+            return var;
+        }, getVar(token.lexeme));
     default:
         return std::monostate{};
     }
@@ -55,7 +58,7 @@ underlying_t Interpreter::compileString(const std::unique_ptr<ASTNode>& astNode)
 }
 
 underlying_t Interpreter::compilePrint(const std::unique_ptr<ASTNode>& astNode) const {
-    for (const auto & child: astNode->children) {
+    for (const auto& child: astNode->children) {
         std::visit([]<typename T>(T&& value) {
             if constexpr (std::is_same_v<std::decay_t<T>, std::monostate>) {
                 std::cout << "";
@@ -63,6 +66,8 @@ underlying_t Interpreter::compilePrint(const std::unique_ptr<ASTNode>& astNode) 
                 std::cout << "nil";
             } else if constexpr (std::is_same_v<std::decay_t<T>, bool>) {
                 std::cout << to_string(value);
+            } else if constexpr (std::is_same_v<std::decay_t<T>, std::shared_ptr<UserFunction>>) {
+                std::cout << "<fun " << value->name << ">";
             } else {
                 std::cout << value;
             }

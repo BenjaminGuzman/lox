@@ -69,8 +69,11 @@ underlying_t Interpreter::compileLeftBrace(const std::unique_ptr<ASTNode>& astNo
     // create a new stack frame, execute, and drop the stack frame
     stack.emplace_back();
     underlying_t ret = nullptr;
-    for (const auto& child: astNode->children)
+    for (const auto& child: astNode->children) {
+        if (shouldUnwindStack)
+            break;
         ret = this->execute(child);
+    }
     stack.pop_back();
     return ret;
 }
@@ -80,18 +83,22 @@ std::vector<underlying_t> Interpreter::compileFuncCall(const std::unique_ptr<AST
     size_t n_expected_args = astNode->children.size();
     std::string funcSignature = funcName + "_" + std::to_string(n_expected_args);
 
-    if (const auto it = NATIVE_FUNCTIONS.find(funcSignature); it != NATIVE_FUNCTIONS.end())
-        // try matching by the exact signature (name + args)
-        return {it->second(astNode.get(), *this)};
-    if (const auto it = NATIVE_FUNCTIONS.find(funcName); it != NATIVE_FUNCTIONS.end())
-        // try matching by func name (meaning it's a vararg func)
-        return {it->second(astNode.get(), *this)};
-    if (const auto it = USER_FUNCTIONS.find(funcSignature); it != USER_FUNCTIONS.end())
-        // if not a native function, try a user-defined function
-        return it->second(*this, astNode->children);
+    underlying_t func = this->getVar(funcSignature); // search for the function using the signature
+    return std::visit([this, &funcName, &astNode]<typename E>(E&& v) -> std::vector<underlying_t> {
+        if constexpr (std::is_same_v<std::decay_t<E>, std::shared_ptr<UserFunction>>)
+            return v->execute(*this, astNode->children);
 
-    this->registerError("Function '" + funcName + "' does not exists", astNode->token);
-    return {std::monostate()};
+        // exact match with signature was not possible, maybe it's a vararg func, use the name to search for it
+        underlying_t func = this->getVar(funcName);
+        return std::visit([this, &astNode]<typename EE>(EE&& vv) -> std::vector<underlying_t> {
+            if constexpr (std::is_same_v<std::decay_t<EE>, std::shared_ptr<UserFunction>>)
+                return vv->execute(*this, astNode->children);
+
+            this->registerError("Variable '" + astNode->token.lexeme + "' is not a function, "
+                                                                   "but it was invoked as one", astNode->token);
+            return {std::monostate()};
+        }, func);
+    }, func);
 }
 
 underlying_t Interpreter::compileFunc(const std::unique_ptr<ASTNode> &astNode) {
@@ -111,12 +118,12 @@ underlying_t Interpreter::compileFunc(const std::unique_ptr<ASTNode> &astNode) {
 
     // add the function to the symbol table
     std::string funcSig = funcName + "_" + std::to_string(funcParams->children.size());
-    USER_FUNCTIONS.emplace(funcSig, UserFunction{
+    stackTop().symbols[funcSig] = std::make_shared<UserFunction>(UserFunction{
         .name = astNode->children[0]->token.lexeme,
         .paramNames = paramNames,
         .funcBody = funcBody
     });
-    USER_FUNCTIONS.emplace(funcName, USER_FUNCTIONS.at(funcSig)); // FIXME this is dumb but the evaluation system requires function signatures that only include the name
+    stackTop().symbols[funcName] = stackTop().symbols[funcSig]; // FIXME this is dumb but the evaluation system requires function signatures that only include the name
 
     return funcSig;
 }
