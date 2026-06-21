@@ -1,5 +1,9 @@
 //clock(;
-fun f() 74;
+fun f() {
+
+}
+print f;
+//fun f() 74;
 fun() {};
 fun hola(a, b c) {
 

@@ -116,6 +116,7 @@ underlying_t Interpreter::compileFunc(const std::unique_ptr<ASTNode> &astNode) {
         .paramNames = paramNames,
         .funcBody = funcBody
     });
+    USER_FUNCTIONS.emplace(funcName, USER_FUNCTIONS.at(funcSig)); // FIXME this is dumb but the evaluation system requires function signatures that only include the name
 
     return funcSig;
 }

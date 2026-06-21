@@ -23,6 +23,9 @@ underlying_t Interpreter::resolveToken(const Token& token) const {
         for (const auto& it : std::views::reverse(stack))
             if (it.symbols.contains(token.lexeme))
                 return it.symbols.at(token.lexeme);
+        // it may be a function (evaluation system expects this)
+        if (auto it = USER_FUNCTIONS.find(token.lexeme); it != USER_FUNCTIONS.end())
+            return "<fn " + token.lexeme + ">";
         this->registerError("Undefined variable '" + token.lexeme + "'.", token);
         return std::monostate();
     default:
