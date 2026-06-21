@@ -1,14 +1,13 @@
 //clock(;
-print clock)));
-fun f() {
-
-}
-print f;
+//print clock)));
 //fun f() 74;
-fun() {};
+//fun() {};
 fun hola(a, b c) {
-
+    print a;
+    print b;
+    print c;
 }
+hola(1 2 3)
 fun sayHello() {
     print "Hello!";
 }

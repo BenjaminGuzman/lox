@@ -4,6 +4,10 @@
 #include <string>
 
 namespace lox {
+constexpr std::string error_in_file_prefix(const std::string& filepath, const Token& token) {
+    return "[" + filepath + ":" + std::to_string(token.line) + ":" + std::to_string(token.col) + "]: ";
+}
+
 /**
  * Constructs a string composed of "[<filepath>:<line>:<col>]: "
  * @param filepath the filepath

@@ -206,8 +206,11 @@ void AST::handle_binary_operators(const Token& curr_token, ASTNode* parent, std:
  * e.g., if there is a binary operator in the stack that has 2 children, then it will be popped
  * @param parentNodes the stack containing the parent nodes
  * @param ifToBeCompleted the if that may be completed
+ * @param scanner the scanner
  */
-void popCompleteNodes(std::stack<ASTNode*>& parentNodes, ASTNode** ifToBeCompleted) {
+int popCompleteNodes(std::stack<ASTNode*>& parentNodes, ASTNode** ifToBeCompleted, Scanner& scanner) {
+    int n_errors = 0;
+
     // pop from the stack all those operators whose operands have been provided
     bool keep_poping = true;
     while (!parentNodes.empty() && keep_poping) {
@@ -237,6 +240,28 @@ void popCompleteNodes(std::stack<ASTNode*>& parentNodes, ASTNode** ifToBeComplet
             }
             break;
         case TERNARY:
+            if (parentNodes.top()->token.type == FUN && parentNodes.top()->children.size() == 3) {
+                const auto parent = parentNodes.top();
+                // check the function is correctly formed
+                if (parent->children[0]->token.type != IDENTIFIER) {
+                    std::cerr << error_in_file_prefix(scanner.filepath, parent->children[0]->token)
+                        << "Function definition expects an identifier as a name. "
+                        << "Received " << parent->children[0]->token.lexeme << " instead." << std::endl;
+                    ++n_errors;
+                }
+                if (parent->children[1]->token.type != LEFT_PAREN) {
+                    std::cerr << error_in_file_prefix(scanner.filepath, parent->children[1]->token)
+                        << "Function definition expects a group of arguments after the name. "
+                        << "Received " << parent->children[1]->token.lexeme << " instead." << std::endl;
+                    ++n_errors;
+                }
+                if (parent->children[2]->token.type != LEFT_BRACE) {
+                    std::cerr << error_in_file_prefix(scanner.filepath, parent->children[2]->token)
+                        << "Function definition expects a group of arguments after the name. "
+                        << "Received " << parent->children[2]->token.lexeme << " instead." << std::endl;
+                    ++n_errors;
+                }
+            }
             if (parentNodes.top()->children.size() == 3
                 && parentNodes.top()->token.type != LEFT_PAREN /* left paren should be closed with a right paren */) {
                 parentNodes.pop(); // all operands have been provided
@@ -252,6 +277,8 @@ void popCompleteNodes(std::stack<ASTNode*>& parentNodes, ASTNode** ifToBeComplet
         default:{};
         }
     }
+
+    return n_errors;
 }
 
 int AST::build() const {
@@ -280,7 +307,7 @@ int AST::build() const {
 
                 // the complete nodes that were in the stack, were not popped in order to wait for the if to be complete
                 //  but now that we now it wasn't complete, we need to pop them
-                popCompleteNodes(parentNodes, &ifToBeCompleted);
+                popCompleteNodes(parentNodes, &ifToBeCompleted, scanner);
             }
         }
 
@@ -490,7 +517,7 @@ int AST::build() const {
         }
 
         // pop from the stack all those operators whose operands have been provided
-        popCompleteNodes(parentNodes, &ifToBeCompleted);
+        n_errors += popCompleteNodes(parentNodes, &ifToBeCompleted, scanner);
     }
 
     // at the end, the parentNodes should only contain the root node, if it contains any other elements, then
