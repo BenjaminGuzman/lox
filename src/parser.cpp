@@ -374,13 +374,14 @@ int AST::build() const {
                 std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
                         << "Premature closure of block. Check statements inside. "
                         << "Will try my best to recover from this, but there are no guarantees I'll recover successfully" << std::endl;
-                while (parentNodes.top()->token.type != LEFT_BRACE) {
+                while (parentNodes.size() > 1 && parentNodes.top()->token.type != LEFT_BRACE) {
                     // pop all the non-braces nodes to "recover" from this
                     ++n_errors;
                     parentNodes.pop();
                 }
             }
-            parentNodes.pop(); // the parent for the next node shouldn't be the current group
+            if (parentNodes.size() > 1)
+                parentNodes.pop(); // the parent for the next node shouldn't be the current group
             break;
         case COMMA:
             break; // for now let's ignore the commas
@@ -430,7 +431,7 @@ int AST::build() const {
                     std::cerr << error_in_file_prefix(scanner.filepath, token.line, token.col)
                             << "Premature closure of parenthesis. Check statements inside. "
                             << "Will try my best to recover from this, but there are no guarantees I'll recover successfully" << std::endl;
-                    while (parentNodes.top() != nullptr && parentNodes.top()->token.type != LEFT_PAREN) {
+                    while (parentNodes.size() > 1 && parentNodes.top()->token.type != LEFT_PAREN) {
                         // pop all the non-parenthesis nodes to "recover" from this
                         ++n_errors;
                         parentNodes.pop();
@@ -448,9 +449,9 @@ int AST::build() const {
                             }));
                         }
                     }
-
                 }
-                parentNodes.pop(); // the parent for the next node shouldn't be the current group
+                if (parentNodes.size() > 1)
+                    parentNodes.pop(); // the parent for the next node shouldn't be the current group
                 break;
             case IDENTIFIER:
                 if (scanner.peek_next().type == LEFT_PAREN // it's a function call <function id>()
