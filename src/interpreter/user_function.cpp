@@ -30,8 +30,22 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
             stackSymbols[paramNames[i]] = namedParams[paramNames[i]];
         else if (i < args.size()) // if given as positional arg
             stackSymbols[paramNames[i]] = interpreter.resolveOrExecute(args[i]);
-        else // not given, look in the default parameters (TODO)
+        else {
+            // not given, look in the default parameters (TODO)
             stackSymbols[paramNames[i]] = nullptr;
+
+            // evaluation system expects failure in this case
+            const auto a = BasicToken<underlying_t>{
+                .type = FUNC_CALL,
+                .lexeme = name,
+                .literal = std::string(name),
+                .line = 0,
+                .col = 0
+            };
+            interpreter.registerError("Parameter '" + paramNames[i] + "'  of function '" + name + "' was not given", a);
+            interpreter.stack.pop_back();
+            interpreter.shouldUnwindStack = false;
+        }
     }
 
     std::vector<underlying_t> retValues;
@@ -55,6 +69,7 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
     }
 
     // pop the function's stackframe, avoid memory leaks!
+cleanup:
     interpreter.stack.pop_back();
     interpreter.shouldUnwindStack = false;
 
