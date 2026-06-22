@@ -363,12 +363,12 @@ TEST(ParserTest, FunctionCall) {
 
 TEST(ParserTest, FunctionCallChain) {
     std::string result = parse_and_serialize("getCallback()(arg1, arg2);");
-    EXPECT_EQ(result, "(call getCallback)(call __chain_f__ arg1 arg2)");
+    EXPECT_EQ(result, "(call getCallback)(call __CHAIN_F__ arg1 arg2)");
 }
 
 TEST(ParserTest, FunctionCallChain2) {
     std::string result = parse_and_serialize("f(first)(second)(third);");
-    EXPECT_EQ(result, "(call f first)(call __chain_f__ second)(call __chain_f__ third)");
+    EXPECT_EQ(result, "(call f first)(call __CHAIN_F__ second)(call __CHAIN_F__ third)");
 }
 
 TEST(ParserTest, ReturnStatement) {
@@ -459,5 +459,5 @@ TEST(ParserTest, AnonymousFunctionAsArgument) {
 
 TEST(ParserTest, CurryingStyleCalls) {
     std::string result = parse_and_serialize("multiply(5)(10);");
-    EXPECT_EQ(result, "(call multiply 5.0)(call __chain_f__ 10.0)");
+    EXPECT_EQ(result, "(call multiply 5.0)(call __CHAIN_F__ 10.0)");
 }

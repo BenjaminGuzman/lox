@@ -45,6 +45,7 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
         });
 
         // execute the function
+        // TODO implement tail recursion
         for (const auto& statement : this->funcBody->children) {
             auto _ = interpreter.execute(statement);
             if (interpreter.shouldUnwindStack)
