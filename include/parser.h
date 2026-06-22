@@ -5,6 +5,12 @@
 #include <stack>
 
 namespace lox {
+/**
+ * The identifier for the last returned high-order function. This is mainly used for chaining function calls,
+ * e.g. f(x)(y), where f(x) returns g(y)
+ */
+const std::string LAST_HO_FUNCTION_IDENTIFIER = "__CHAIN_F__";
+
 class ASTNode {
 public:
     const Token token;

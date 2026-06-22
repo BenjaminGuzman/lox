@@ -806,3 +806,67 @@ multiply(4, 5);
     ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(20, 0, 0, false));
 }
+
+TEST(InterpreterIntegrationTest, HigherOrderFunction_AsArgument) {
+    underlying_t result = interpret_expression(R"(
+fun apply(f, x) {
+    return f(x);
+}
+fun square(n) {
+    return n * n;
+}
+apply(square, 5);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(25, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, HigherOrderFunction_ReturnFunction) {
+    underlying_t result = interpret_expression(R"(
+fun getMultiplier() {
+    fun multiplyByTwo(n) {
+        return n * 2;
+    }
+    return multiplyByTwo;
+}
+var doubler = getMultiplier();
+doubler(10);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(20, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, FunctionCallChaining) {
+    underlying_t result = interpret_expression(R"(
+fun first() {
+    fun second() {
+        fun third() {
+            return "success!";
+        }
+        return third;
+    }
+    return second;
+}
+first()()();
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "success!");
+}
+
+TEST(InterpreterIntegrationTest, FunctionCallChaining_WithArguments) {
+    underlying_t result = interpret_expression(R"(
+fun chooseOperation(isAddition) {
+    fun add(a, b) {
+        return a + b;
+    }
+    fun subtract(a, b) {
+        return a - b;
+    }
+    if (isAddition) return add;
+    return subtract;
+}
+chooseOperation(isAddition: true)(10, 5);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(15, 0, 0, false));
+}

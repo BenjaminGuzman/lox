@@ -361,10 +361,15 @@ TEST(ParserTest, FunctionCall) {
     EXPECT_EQ(result, "(call add 1.0 2.0)");
 }
 
-// TEST(ParserTest, FunctionCallComplex) {
-    // std::string result = parse_and_serialize("getCallback()(arg1, arg2);");
-    // EXPECT_EQ(result, "(call (call getCallback) (arg1 arg2))");
-// }
+TEST(ParserTest, FunctionCallChain) {
+    std::string result = parse_and_serialize("getCallback()(arg1, arg2);");
+    EXPECT_EQ(result, "(call getCallback)(call __chain_f__ arg1 arg2)");
+}
+
+TEST(ParserTest, FunctionCallChain2) {
+    std::string result = parse_and_serialize("f(first)(second)(third);");
+    EXPECT_EQ(result, "(call f first)(call __chain_f__ second)(call __chain_f__ third)");
+}
 
 TEST(ParserTest, ReturnStatement) {
     std::string result = parse_and_serialize("fun f() { var x = 10; var y = 20; return x, y; }");
@@ -422,4 +427,37 @@ fun greet(name, greeting) {
 greet(greeting: "Hello", name: "User");
 )");
     EXPECT_EQ(result, "(fun greet (group name greeting) ({ (print (+ (+ greeting , ) name))))(call greet (: greeting Hello) (: name User))");
+}
+
+TEST(ParserTest, HighOrderFunctionPassing) {
+    std::string result = parse_and_serialize(R"(
+fun apply(func, value) {
+  return func(value);
+}
+apply(printValue, 10);
+)");
+    EXPECT_EQ(result, "(fun apply (group func value) ({ (return (call func value))))(call apply printValue 10.0)");
+}
+
+TEST(ParserTest, HighOrderFunctionReturning) {
+    std::string result = parse_and_serialize(R"(
+fun makeAdder(x) {
+  fun adder(y) {
+    return x + y;
+  }
+  return adder;
+}
+var add5 = makeAdder(5);
+)");
+    EXPECT_EQ(result, "(fun makeAdder (group x) ({ (fun adder (group y) ({ (return (+ x y)))) (return adder)))(var (= add5 (call makeAdder 5.0)))");
+}
+
+TEST(ParserTest, AnonymousFunctionAsArgument) {
+    std::string result = parse_and_serialize("twice(square, 2);");
+    EXPECT_EQ(result, "(call twice square 2.0)");
+}
+
+TEST(ParserTest, CurryingStyleCalls) {
+    std::string result = parse_and_serialize("multiply(5)(10);");
+    EXPECT_EQ(result, "(call multiply 5.0)(call __chain_f__ 10.0)");
 }

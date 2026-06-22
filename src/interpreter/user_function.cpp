@@ -60,6 +60,12 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
     if (retValues.empty())
         return {nullptr};
 
+    std::visit([&interpreter]<typename E>(E&& v) {
+        // if it's a high-order function store it just in case there are chained calls to it
+        if constexpr (std::is_same_v<std::decay_t<E>, std::shared_ptr<UserFunction>>)
+            interpreter.stackTop().symbols[LAST_HO_FUNCTION_IDENTIFIER] = v;
+    }, retValues[0]);
+
     return retValues;
 }
 

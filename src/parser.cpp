@@ -501,6 +501,32 @@ int AST::build() const {
                                 .parent = forNode
                             }));
                         }
+                    } else if (parentNodes.top()->token.type == FUNC_CALL && scanner.peek_next().type == LEFT_PAREN) {
+                        // if it's a chain of function calls, e.g., f()()
+
+                        parentNodes.pop(); // we're done with the current function call
+                        // now we need to prepare for the call chain
+
+                        auto _ = scanner.next_token(); // discard the (
+
+                        // the tree should contain Token{function name = __chain_f__} ->(as children) {function args}
+                        // __chain_f__ indicates the function call should be the last return value
+                        const Token funcCallToken = BasicToken<underlying_t>{
+                            .type = FUNC_CALL,
+                            .lexeme = LAST_HO_FUNCTION_IDENTIFIER,
+                            .literal = LAST_HO_FUNCTION_IDENTIFIER,
+                            .line = token.line,
+                            .col = token.col,
+                        };
+                        auto node = std::make_unique<ASTNode>(ASTNode{
+                            .token = funcCallToken,
+                            .parent = parentNodes.top(),
+                            .must_be_op_type = MULTI
+                        });
+                        parentNodes.top()->children.push_back(std::move(node));
+                        parentNodes.push(parentNodes.top()->children.back().get());
+                        node = nullptr;
+                        break;
                     }
                 }
                 if (parentNodes.size() > 1)
