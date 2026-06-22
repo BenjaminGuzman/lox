@@ -6,6 +6,12 @@
 
 namespace lox {
 std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const std::vector<std::unique_ptr<ASTNode>>& args) const {
+    if (args.size() > paramNames.size()) {
+        interpreter.registerError("Function '" + name + "' receives " + std::to_string(paramNames.size())
+            + " params but " + std::to_string(args.size()) + " were given", args[paramNames.size()]->token);
+        return {nullptr};
+    }
+
     std::unordered_map<std::string, underlying_t> namedParams = args
         | std::views::filter([&interpreter](const std::unique_ptr<ASTNode>& astNode) {
             if (astNode->token.type == COLON) {
