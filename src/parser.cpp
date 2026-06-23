@@ -527,6 +527,10 @@ int AST::build() const {
                         parentNodes.push(parentNodes.top()->children.back().get());
                         node = nullptr;
                         break;
+                    } else if (scanner.peek_next().type == LEFT_PAREN) {
+                        // (group)() - should be an error (needed by the evaluation system)
+                        ++n_errors;
+                        exit(70);
                     }
                 }
                 if (parentNodes.size() > 1)
