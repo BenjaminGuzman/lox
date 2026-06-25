@@ -24,7 +24,7 @@ private:
     /**
      * The execution stack
      */
-    std::vector<Stackframe> stack;
+    std::vector<std::shared_ptr<Stackframe>> stack;
 
     /**
      * Stack of callback functions to be executed when found a return statement
@@ -57,7 +57,7 @@ private:
      * @return the stackframe at the top of the stack
      */
     Stackframe& stackTop() {
-        return stack.back();
+        return *stack.back();
     }
 
     /**
@@ -167,7 +167,7 @@ public:
      * @param registerError function that gets called when an error during execution is found
      */
     Interpreter(registerErrorF registerError) : registerError(std::move(registerError)) {
-        this->stack.emplace_back();
+        this->stack.emplace_back(std::make_shared<Stackframe>());
         this->registerGlobalNativeFunctions();
     };
 
@@ -199,8 +199,8 @@ public:
      */
     void deleteFromStack(const std::string& symbol) {
         for (auto& it : std::ranges::views::reverse(stack))
-            if (it.symbols.contains(symbol)) {
-                it.symbols.erase(symbol);
+            if (it->symbols.contains(symbol)) {
+                it->symbols.erase(symbol);
             }
     }
 

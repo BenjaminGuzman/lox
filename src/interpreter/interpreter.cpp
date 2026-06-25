@@ -6,8 +6,8 @@
 
 namespace lox {
 underlying_t Interpreter::getVar(const std::string &symbolName) const {
-    for (const auto& it : std::views::reverse(stack))
-        if (auto varIt = it.symbols.find(symbolName); varIt != it.symbols.end())
+    for (const auto& frame_ptr : std::views::reverse(stack))
+        if (auto varIt = frame_ptr->symbols.find(symbolName); varIt != frame_ptr->symbols.end())
             return varIt->second;
     return std::monostate();
 }

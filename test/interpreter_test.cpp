@@ -719,23 +719,108 @@ add(5, 10);
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(15, 0, 0, false));
 }
 
-// TEST(InterpreterIntegrationTest, FunctionClosure) {
-//     underlying_t result = interpret_expression(R"(
-// fun makeCounter() {
-//     var i = 0;
-//     fun count() {
-//         i = i + 1;
-//         return i;
-//     }
-//     return count;
-// }
-// var counter = makeCounter();
-// counter();
-// counter();
-// )");
-    // ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
-    // ASSERT_EQ(get_value<RealNumber>(result), RealNumber(2, 0, 0, false));
-// }
+TEST(InterpreterIntegrationTest, FunctionClosure) {
+    underlying_t result = interpret_expression(R"(
+fun makeCounter() {
+    var i = 0;
+    fun count() {
+        i = i + 1;
+        return i;
+    }
+    return count;
+}
+var counter = makeCounter();
+counter();
+counter();
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(2, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, FunctionClosureIndependentState) {
+    underlying_t result = interpret_expression(R"(
+fun makeCounter() {
+    var i = 0;
+    fun count() {
+        i = i + 1;
+        return i;
+    }
+    return count;
+}
+var c1 = makeCounter();
+var c2 = makeCounter();
+c1(); // 1
+c1(); // 2
+c2(); // 1
+c1(); // 3
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(3, 0, 0, false));
+}
+
+TEST(InterpreterIntegrationTest, FunctionClosureLexicalScope) {
+    underlying_t result = interpret_expression(R"(
+var a = "global";
+fun test() {
+    var a = "local";
+    fun closure() {
+        return a;
+    }
+    return closure;
+}
+var fn = test();
+var a = "changed global"; // This shadowing variable should be ignored by the closure
+fn();
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "local");
+}
+
+TEST(InterpreterIntegrationTest, FunctionClosureSharedState) {
+    underlying_t result = interpret_expression(R"(
+var getter;
+var setter;
+
+fun make() {
+    var x = "initial";
+    
+    fun get() { return x; }
+    fun set(val) { x = val; }
+    
+    // Both functions share the exact same captured frame
+    getter = get;
+    setter = set;
+}
+
+make();
+setter("updated state");
+getter();
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result));
+    ASSERT_EQ(get_value<std::string>(result), "updated state");
+}
+
+TEST(InterpreterIntegrationTest, DeeplyNestedClosures) {
+    underlying_t result = interpret_expression(R"(
+fun outer() {
+    var a = 1;
+    fun middle() {
+        var b = 2;
+        fun inner() {
+            var c = 3;
+            return a + b + c;
+        }
+        return inner;
+    }
+    return middle;
+}
+var m = outer();
+var i = m();
+i(); // 1 + 2 + 3 = 6
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
+    ASSERT_EQ(get_value<RealNumber>(result), RealNumber(6, 0, 0, false));
+}
 
 TEST(InterpreterIntegrationTest, RecursiveFunction) {
     underlying_t result = interpret_expression(R"(

@@ -19,9 +19,9 @@ underlying_t Interpreter::compileEqual(const std::unique_ptr<ASTNode>& astNode) 
 
     // get the scope where the variable was declared
     for (auto& frame : std::views::reverse(stack))
-        if (frame.symbols.contains(identifier)) {
-            frame.symbols[identifier] = this->resolveOrExecute(astNode->children[1]);
-            return frame.symbols[identifier];
+        if (frame->symbols.contains(identifier)) {
+            frame->symbols[identifier] = this->resolveOrExecute(astNode->children[1]);
+            return frame->symbols[identifier];
         }
 
     registerError("Undeclared variable '" + identifier + "'", astNode->children[0]->token);
@@ -67,7 +67,7 @@ underlying_t Interpreter::compileVar(const std::unique_ptr<ASTNode>& astNode) {
 
 underlying_t Interpreter::compileLeftBrace(const std::unique_ptr<ASTNode>& astNode) {
     // create a new stack frame, execute, and drop the stack frame
-    stack.emplace_back();
+    stack.emplace_back(std::make_shared<Stackframe>());
     underlying_t ret = nullptr;
     for (const auto& child: astNode->children) {
         if (shouldUnwindStack)
@@ -121,7 +121,10 @@ underlying_t Interpreter::compileFunc(const std::unique_ptr<ASTNode> &astNode) {
     stackTop().symbols[funcSig] = std::make_shared<UserFunction>(UserFunction{
         .name = astNode->children[0]->token.lexeme,
         .paramNames = paramNames,
-        .funcBody = funcBody
+        .funcBody = funcBody,
+        .nativeFunc = nullptr,
+        .isNative = false,
+        .closure = this->stack
     });
     stackTop().symbols[funcName] = stackTop().symbols[funcSig]; // FIXME this is dumb but the evaluation system requires function signatures that only include the name
 

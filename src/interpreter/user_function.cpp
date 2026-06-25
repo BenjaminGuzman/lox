@@ -28,14 +28,26 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
         })
         | std::ranges::to<std::unordered_map<std::string, underlying_t>>();
 
+    std::vector<underlying_t> positionalArgs = args
+        | std::views::transform([&interpreter](const std::unique_ptr<ASTNode>& astNode) {
+            return astNode->token.type == COLON
+                ? nullptr // if it's a named arg, ignore it
+                : interpreter.resolveOrExecute(astNode); // if it's a positional arg, simply resolve its value
+        })
+        | std::ranges::to<std::vector<underlying_t>>();
+
+    // swap interpreter's stack with the captured closure stack
+    auto originalStack = std::move(interpreter.stack);
+    interpreter.stack = this->closure;
+
     // create a stackframe for the function and put all the args there, i.e., assign the value (arg) to the name (param)
-    interpreter.stack.emplace_back();
+    interpreter.stack.emplace_back(std::make_shared<Stackframe>());
     auto& stackSymbols = interpreter.stackTop().symbols;
     for (size_t i = 0; i < paramNames.size(); ++i) {
         if (namedParams.contains(paramNames[i])) // if given as named arg
             stackSymbols[paramNames[i]] = namedParams[paramNames[i]];
         else if (i < args.size()) // if given as positional arg
-            stackSymbols[paramNames[i]] = interpreter.resolveOrExecute(args[i]);
+            stackSymbols[paramNames[i]] = positionalArgs[i];
         else {
             // not given, look in the default parameters (TODO)
             stackSymbols[paramNames[i]] = nullptr;
@@ -50,7 +62,9 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
             };
             interpreter.registerError("Parameter '" + paramNames[i] + "'  of function '" + name + "' was not given", a);
             interpreter.stack.pop_back();
+            interpreter.stack = std::move(originalStack); // restore caller's stack
             interpreter.shouldUnwindStack = false;
+            return {nullptr};
         }
     }
 
@@ -77,6 +91,7 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
     // pop the function's stackframe, avoid memory leaks!
 cleanup:
     interpreter.stack.pop_back();
+    interpreter.stack = std::move(originalStack); // restore caller's stack
     interpreter.shouldUnwindStack = false;
 
     if (retValues.empty())

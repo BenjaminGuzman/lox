@@ -53,7 +53,7 @@ underlying_t Interpreter::compileFor(const std::unique_ptr<ASTNode>& astNode) {
     }
     const auto& forExec = astNode->children[1];
 
-    stack.emplace_back(); // open a new stackframe for the for loop
+    stack.emplace_back(std::make_shared<Stackframe>()); // open a new stackframe for the for loop
     auto _ = this->resolveOrExecute(forGroup->children[0]); // execute initialization
     const auto& condition = forGroup->children[1];
     while (is_truthy(this->resolveOrExecute(condition)) && !shouldUnwindStack) {

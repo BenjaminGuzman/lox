@@ -1,12 +1,15 @@
 #ifndef CODECRAFTERS_INTERPRETER_USERFUNCTION_H
 #define CODECRAFTERS_INTERPRETER_USERFUNCTION_H
 #include <string>
+#include <vector>
+#include <memory>
 
 #include "parser.h"
 #include "scanner/token.h"
 
 namespace lox {
 class Interpreter;
+struct Stackframe;
 
 /**
  * Represents a function that can be used in lox
@@ -40,6 +43,11 @@ public:
      * Tells whether the function is a user-defined or a native function
      */
     const bool isNative = false;
+
+    /**
+     * The captured lexical environment (closure), stored as a list of shared stack frames.
+     */
+    std::vector<std::shared_ptr<Stackframe>> closure;
 
     /**
      * Execute the user-defined function with the given arguments
