@@ -7,6 +7,11 @@ namespace lox {
 /**
  * Actual number is = integer + fractional / 10 ^ n_fractional_digits
  * e.g., 3.001 = {integer = 3, fractional = 1, n_fractional_digits = 3}
+ * 
+ * Note: This custom representation is used instead of standard IEEE 754 floating-point 
+ * types (like double) specifically to explore, study, and implement custom arithmetic 
+ * algorithms (e.g., Newton-Raphson method, Goldschmidt division) with a higher degree 
+ * of control over precision and noise reduction.
  */
 class RealNumber {
 public:
