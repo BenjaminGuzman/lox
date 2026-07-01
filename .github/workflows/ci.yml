@@ -10,13 +10,19 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
-
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake build-essential
@@ -31,11 +37,19 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: ctest --output-on-failure -C Release
 
+    - name: Rename executable (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: mv build/interpreter interpreter-${{ runner.os }}-x86_64
+
+    - name: Rename executable (Windows)
+      if: runner.os == 'Windows'
+      run: mv build/Release/interpreter.exe interpreter-${{ runner.os }}-x86_64.exe
+
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: interpreter-linux-x86_64
-        path: build/interpreter
+        name: interpreter-${{ runner.os }}
+        path: interpreter-*
 
   release:
     needs: build-and-test
@@ -43,19 +57,21 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
-    - name: Download Artifact
+    - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
-        name: interpreter-linux-x86_64
-        path: .
+        path: artifacts
 
-    - name: Make executable
-      run: chmod +x interpreter
+    - name: Prepare binaries for release
+      run: |
+        find artifacts -type f -exec mv {} . \;
+        chmod +x interpreter-Linux-x86_64
+        chmod +x interpreter-macOS-x86_64
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        files: interpreter
+        files: interpreter-*
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
