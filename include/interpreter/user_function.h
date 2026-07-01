@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "parser.h"
 #include "scanner/token.h"
@@ -26,6 +27,11 @@ public:
      * parameter)
      */
     const std::vector<std::string> paramNames;
+
+    /**
+     * Stores default values for parameters, mapping parameter name to its expression ASTNode
+     */
+    const std::unordered_map<std::string, const std::unique_ptr<ASTNode>*> defaultParams;
 
     /**
      * Points to the '{' of the function, i.e., the open brace

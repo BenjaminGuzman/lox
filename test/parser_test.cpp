@@ -461,3 +461,21 @@ TEST(ParserTest, CurryingStyleCalls) {
     std::string result = parse_and_serialize("multiply(5)(10);");
     EXPECT_EQ(result, "(call multiply 5.0)(call __CHAIN_F__ 10.0)");
 }
+
+TEST(ParserTest, FunctionDefaultParameters) {
+    std::string result = parse_and_serialize(R"(
+fun test(a = 1, b = 2) {
+  return a + b;
+}
+)");
+    EXPECT_EQ(result, "(fun test (group (= a 1.0) (= b 2.0)) ({ (return (+ a b))))");
+}
+
+TEST(ParserTest, FunctionMixedDefaultParameters) {
+    std::string result = parse_and_serialize(R"(
+fun test(a, b = 2, c = 3) {
+  return a + b;
+}
+)");
+    EXPECT_EQ(result, "(fun test (group a (= b 2.0) (= c 3.0)) ({ (return (+ a b))))");
+}

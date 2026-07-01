@@ -112,15 +112,29 @@ underlying_t Interpreter::compileFunc(const std::unique_ptr<ASTNode> &astNode) {
     const auto& funcBody = astNode->children[2];
 
     std::vector<std::string> paramNames(funcParams->children.size());
-    std::ranges::transform(funcParams->children, paramNames.begin(), [](const std::unique_ptr<ASTNode>& child) {
-        return child->token.lexeme;
-    });
+
+    std::unordered_map<std::string, const std::unique_ptr<ASTNode>*> defaultParams;
+    for (size_t i = 0; i < funcParams->children.size(); ++i) {
+        const auto& child = funcParams->children[i];
+        if (child->token.type == EQ) {
+            if (child->children.size() != 2) {
+                this->registerError("Invalid default parameter", child->token);
+                return std::monostate();
+            }
+            std::string paramName = child->children[0]->token.lexeme;
+            paramNames[i] = paramName;
+            defaultParams[paramName] = &child->children[1];
+        } else {
+            paramNames[i] = child->token.lexeme;
+        }
+    }
 
     // add the function to the symbol table
     std::string funcSig = funcName + "_" + std::to_string(funcParams->children.size());
     stackTop().symbols[funcSig] = std::make_shared<UserFunction>(UserFunction{
         .name = astNode->children[0]->token.lexeme,
         .paramNames = paramNames,
+        .defaultParams = defaultParams,
         .funcBody = funcBody,
         .nativeFunc = nullptr,
         .isNative = false,

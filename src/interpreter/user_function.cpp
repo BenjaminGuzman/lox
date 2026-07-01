@@ -46,12 +46,12 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
     for (size_t i = 0; i < paramNames.size(); ++i) {
         if (namedParams.contains(paramNames[i])) // if given as named arg
             stackSymbols[paramNames[i]] = namedParams[paramNames[i]];
-        else if (i < args.size()) // if given as positional arg
+        else if (i < args.size() && args[i]->token.type != COLON) // if given as positional arg
             stackSymbols[paramNames[i]] = positionalArgs[i];
-        else {
-            // not given, look in the default parameters (TODO)
-            stackSymbols[paramNames[i]] = nullptr;
-
+        else if (defaultParams.contains(paramNames[i])) {
+            // evaluate the default parameter expression at call time
+            stackSymbols[paramNames[i]] = interpreter.resolveOrExecute(*defaultParams.at(paramNames[i]));
+        } else {
             // evaluation system expects failure in this case
             const auto a = BasicToken<underlying_t>{
                 .type = FUNC_CALL,
@@ -60,7 +60,7 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
                 .line = 0,
                 .col = 0
             };
-            interpreter.registerError("Parameter '" + paramNames[i] + "'  of function '" + name + "' was not given", a);
+            interpreter.registerError("Parameter '" + paramNames[i] + "' of function '" + name + "' was not given", a);
             interpreter.stack.pop_back();
             interpreter.stack = std::move(originalStack); // restore caller's stack
             interpreter.shouldUnwindStack = false;

@@ -941,3 +941,49 @@ chooseOperation(isAddition: true)(10, 5);
     ASSERT_TRUE(std::holds_alternative<RealNumber>(result));
     ASSERT_EQ(get_value<RealNumber>(result), RealNumber(15, 0, 0, false));
 }
+
+TEST(InterpreterIntegrationTest, FunctionDefaultParameters) {
+    // 1. Missing trailing positional args fallback to defaults
+    underlying_t result1 = interpret_expression(R"(
+fun greet(name = "World", greeting = "Hello") {
+    return greeting + " " + name;
+}
+greet("Lox");
+)");
+    ASSERT_TRUE(std::holds_alternative<std::string>(result1));
+    ASSERT_EQ(get_value<std::string>(result1), "Hello Lox");
+
+    // 2. All missing args fallback to defaults
+    underlying_t result2 = interpret_expression(R"(
+fun test(a = 1, b = 2) {
+    return a + b;
+}
+test();
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result2));
+    ASSERT_EQ(get_value<RealNumber>(result2), RealNumber(3, 0, 0, false));
+
+    // 3. Named arguments with defaults
+    underlying_t result3 = interpret_expression(R"(
+fun multiply(a = 10, b = 2, c = 1) {
+    return a * b * c;
+}
+multiply(b: 5);
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result3));
+    ASSERT_EQ(get_value<RealNumber>(result3), RealNumber(50, 0, 0, false));
+
+    // 4. Default expressions are evaluated at call time (using global variables)
+    underlying_t result4 = interpret_expression(R"(
+var dynamicVal = 5;
+fun dynamicDefault(val = dynamicVal) {
+    return val;
+}
+var first = dynamicDefault();
+dynamicVal = 10;
+var second = dynamicDefault();
+first + second;
+)");
+    ASSERT_TRUE(std::holds_alternative<RealNumber>(result4));
+    ASSERT_EQ(get_value<RealNumber>(result4), RealNumber(15, 0, 0, false));
+}
