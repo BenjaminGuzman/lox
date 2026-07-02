@@ -16,14 +16,28 @@ Scanner::Scanner(const std::string& filepath, bool is_filepath): filepath(filepa
         stream.rdbuf(stringstream.rdbuf());
     }
 
-    if (!filestream.good() || !stream.good())
+    if ((is_filepath && !filestream.good()) || !stream.good())
         throw std::runtime_error("Couldn't open \"" + filepath + "\" to read from it. " + strerror(errno));
 
     tokens.push_back({}); // add the previous token
     tokens.push_back({}); // add the current token
     tokens.push_back(_next_token()); // add the next token
 }
+
 Scanner::~Scanner() = default;
+
+void Scanner::feed(const std::string& input) {
+    if (filestream.is_open())
+        filestream.close();
+    stringstream.str(input);
+    stringstream.clear(); // Clear EOF flags
+    stream.rdbuf(stringstream.rdbuf());
+    
+    tokens.clear();
+    tokens.push_back({});
+    tokens.push_back({});
+    tokens.push_back(_next_token());
+}
 
 Token parse_string(std::istream& stream, const size_t line, const size_t col) {
     std::stringstream lexeme_buff;

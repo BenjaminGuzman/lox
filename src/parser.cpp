@@ -241,7 +241,7 @@ int popCompleteNodes(std::stack<ASTNode*>& parentNodes, ASTNode** ifToBeComplete
             }
             break;
         case TERNARY:
-            if (parentNodes.top()->token.type == FUN && parentNodes.top()->children.size() == 3) {
+            if ((parentNodes.top()->token.type == FUN || parentNodes.top()->token.type == FUNC) && parentNodes.top()->children.size() == 3) {
                 const auto parent = parentNodes.top();
                 // check the function is correctly formed
                 if (parent->children[0]->token.type != IDENTIFIER) {
@@ -327,6 +327,7 @@ int AST::build() const {
         case FOR:
         case WHILE:
         case RETURN:
+        case FUNC:
         case FUN: {
             auto operator_node = std::make_unique<ASTNode>(ASTNode{
                 .token = token,
@@ -513,7 +514,7 @@ int AST::build() const {
                 break;
             case IDENTIFIER:
                 if (scanner.peek_next().type == LEFT_PAREN // it's a function call <function id>()
-                    && parentNodes.top()->token.type != FUN /* but not a function definition */) {
+                    && parentNodes.top()->token.type != FUN && parentNodes.top()->token.type != FUNC /* but not a function definition */) {
                     auto _ = scanner.next_token(); // discard the (
 
                     // in the end, the tree should contain Token{function name} ->(as children) {function args}
@@ -575,4 +576,12 @@ int AST::build() const {
 
     return n_errors;
 }
+
+const std::unique_ptr<ASTNode>& AST::build_next_statement() const {
+    int errors = build();
+    if (errors > 0 || root->children.empty())
+        return root;
+    return root->children.back();
+}
+
 }

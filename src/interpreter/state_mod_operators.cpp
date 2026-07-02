@@ -132,7 +132,7 @@ underlying_t Interpreter::compileFunc(const std::unique_ptr<ASTNode> &astNode) {
     // add the function to the symbol table
     std::string funcSig = funcName + "_" + std::to_string(funcParams->children.size());
     stackTop().symbols[funcSig] = std::make_shared<UserFunction>(UserFunction{
-        .name = astNode->children[0]->token.lexeme,
+        .name = funcName,
         .paramNames = paramNames,
         .defaultParams = defaultParams,
         .funcBody = funcBody,

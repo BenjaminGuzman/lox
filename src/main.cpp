@@ -122,6 +122,60 @@ std::string validate_args_and_get_file(int argc, const char** argv, const std::s
     return 0;
 }
 
+/**
+ * REPL (read-eval-print loop)
+ * @return exit status code
+ */
+[[nodiscard]] int repl(int argc, const char** argv) {
+    std::cout << "This is lox's REPL. Enter any lox statement and it will be executed after pressing Enter.\n"
+            << "Exit using .exit/.quit" << std::endl;
+
+    lox::registerErrorF logErrors = [](std::string message, const Token& token) {
+        std::cerr << message << std::endl;
+    };
+    lox::Interpreter interpreter(logErrors);
+    interpreter.strict_output_mode = false;
+
+    lox::Scanner scanner("", false);
+    lox::AST ast(scanner, false);
+
+    std::string line;
+    while (true) {
+        std::cout << "> " << std::flush;
+        if (!std::getline(std::cin, line))
+            break; // Exit on Ctrl-D
+        if (line == ".exit" || line == ".quit")
+            break; // Exit on .exit/.quit
+        if (line.empty())
+            continue; // Continue on empty line
+
+        scanner.feed(line + "\n");
+        const auto& stmt = ast.build_next_statement();
+        if (stmt == ast.root)
+            continue; // Parse error or no statements
+        
+        underlying_t val = interpreter.execute(stmt);
+        if (stmt->token.type == PRINT)
+            continue; // avoid printing the return value (nullptr) of print function
+
+        // print the returned value
+        std::visit([]<typename E>(E&& v) {
+            if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>)
+                return;
+
+            std::cout << "\033[2mReturned: \033[0m";
+            if constexpr (std::is_same_v<std::decay_t<E>, std::nullptr_t>)
+                std::cout << "nil";
+            else if constexpr (!std::is_same_v<std::decay_t<E>, std::monostate>)
+                std::cout << v;
+            std::cout << std::endl;
+        }, val);
+    }
+
+    std::cout << "Bye! ✌️" << std::endl;
+    return 0;
+}
+
 const std::unordered_map<std::string, std::function<int(int, const char**)>> COMMANDS = {
     {"tokenize", tokenize},
     {"parse", parse},
@@ -130,12 +184,8 @@ const std::unordered_map<std::string, std::function<int(int, const char**)>> COM
 };
 
 int main(int argc, const char** argv) {
-    // Disable output buffering
-    std::cout << std::unitbuf;
-    std::cerr << std::unitbuf;
-
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    std::cerr << "Logs from your program will appear here!" << std::endl;
+    if (argc == 1) // just the program name, i.e., no args
+        return repl(argc, argv);
 
     const std::string command = argv[1];
     if (!COMMANDS.contains(command)) {

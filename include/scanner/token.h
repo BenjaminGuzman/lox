@@ -65,7 +65,7 @@ enum TokenType {
     FALSE,
     FOR,
     WHILE,
-    FUN,
+    FUN, FUNC,
     RETURN,
     SUPER,
     THIS,
@@ -118,6 +118,7 @@ inline const std::unordered_map<std::string, TokenType> TOKEN_STRING_MAPPING = {
     {"for", FOR},
     {"while", WHILE},
     {"fun", FUN},
+    {"func", FUNC},
     {"return", RETURN},
     {"super", SUPER},
     {"this", THIS},
@@ -172,6 +173,7 @@ inline const std::unordered_map<TokenType, TokenOpType> TOKEN_OP_TYPE_MAPPING = 
      * 3. body
      */
     {FUN, TERNARY},
+    {FUNC, TERNARY}, // synonym for fun
     {RETURN, MULTI}, // return accepts multiple args to be returned
     {SUPER, NOT_OPERATOR},
     {THIS, NOT_OPERATOR},

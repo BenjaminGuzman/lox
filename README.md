@@ -20,6 +20,9 @@ The parser uses an iterative approach to evaluate expressions and build the Abst
 ### 3. Zero-Copy Tokenization
 To improve memory efficiency, the scanner makes heavy use of `std::string_view` through a custom `BasicTokenView` template. This provides a lightweight, non-owning view of token data, which helps reduce heap allocations during the tokenization and parsing phases.
 
+### 4. Interactive REPL
+The interpreter features a fully functional Read-Eval-Print Loop (REPL). It natively maintains the state of your variables and functions across inputs. By executing single statements line-by-line, it immediately evaluates the expression and prints out the returned underlying type, making it a powerful tool for interactive experimentation.
+
 ---
 
 ## 📖 Complete Language Documentation
@@ -189,10 +192,15 @@ Due to the custom iterative Pratt parser implementation, there are a few interes
 Functions in this implementation are incredibly versatile, acting as first-class citizens.
 
 #### Basic Declaration & Return
-Declared with `fun` and returns a value (or `nil` by default) with `return`.
+Declared with either the `fun` or `func` keyword and returns a value (or `nil` by default) with `return`.
 
 ```lox
+// Both declarations are valid!
 fun multiply(a, b) {
+    return a * b;
+}
+
+func multiply(a, b) {
     return a * b;
 }
 print multiply(3, 4); // 12
@@ -259,7 +267,7 @@ computeStats(stamina: 100, health: 50, mana: 200);
 ### Global Native Functions
 The runtime environment comes with built-in utility native functions pre-loaded in the global scope:
 
-* `clock()`: Returns the exact current time in seconds since the Epoch. Useful for algorithm benchmarking.
+* `clock()`: Returns the exact current time in seconds since the Epoch.
 * `delete(varName)`: Manually removes a variable from the current stack frame execution environment, allowing for explicit memory/state control.
 
 ```lox

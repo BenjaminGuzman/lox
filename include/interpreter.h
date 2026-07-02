@@ -145,6 +145,7 @@ private:
         {LEFT_BRACE, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
         {FUNC_CALL,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFuncCall(astNode)[0];}}, // FIXME add support for multi-return
         {FUN,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFunc(astNode);}},
+        {FUNC,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFunc(astNode);}},
         {RETURN,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileReturn(astNode);}}, // FIXME add support for multi-return
 
         {IF,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},

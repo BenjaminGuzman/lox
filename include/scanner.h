@@ -82,7 +82,14 @@ public:
      * @param is_filepath true if the given string should be treated as a filepath
      */
     explicit Scanner(const std::string& s, bool is_filepath=true);
+    
     ~Scanner();
+
+    /**
+     * Feeds a new string into the scanner, resetting its token stream.
+     * Useful for reusing a single Scanner instance in a REPL.
+     */
+    void feed(const std::string& s);
 
     /**
      * Scans the next token of the file

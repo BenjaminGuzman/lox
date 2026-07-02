@@ -44,6 +44,12 @@ public:
      * @return number of errors
      */
     [[nodiscard]] int build() const;
+
+    /**
+     * Parses the next statement from the scanner and returns it.
+     * Useful for REPLs.
+     */
+    [[nodiscard]] const std::unique_ptr<ASTNode>& build_next_statement() const;
 };
 
 }
