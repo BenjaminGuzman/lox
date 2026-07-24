@@ -3,6 +3,7 @@
 #include "scanner.h"
 #include <memory>
 #include <stack>
+#include <optional>
 
 namespace lox {
 /**
