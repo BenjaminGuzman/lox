@@ -26,9 +26,10 @@ jobs:
       run: |
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt-get update
-        sudo apt-get install -y cmake build-essential gcc-14 g++-14
+        sudo apt-get install -y cmake build-essential gcc-14 g++-14 llvm-dev
 
     - name: Setup LLVM
+      if: runner.os != 'Linux'
       uses: ZhongRuoyu/setup-llvm@v0
       with:
         llvm-version: 18
