@@ -24,15 +24,24 @@ jobs:
     - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
       run: |
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
         sudo apt-get update
-        sudo apt-get install -y cmake build-essential
+        sudo apt-get install -y cmake build-essential gcc-14 g++-14
 
     - name: Setup LLVM
       uses: ZhongRuoyu/setup-llvm@v0
       with:
         llvm-version: 18
 
-    - name: Configure CMake
+    - name: Configure CMake (Linux)
+      if: runner.os == 'Linux'
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      env:
+        CC: gcc-14
+        CXX: g++-14
+
+    - name: Configure CMake (Windows/macOS)
+      if: runner.os != 'Linux'
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
