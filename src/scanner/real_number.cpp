@@ -10,8 +10,9 @@ std::string to_string(const RealNumber& number) {
     if (number.n_fractional_digits == 0 || number.fractional == 0)
         return sign + std::to_string(number.integer);
 
-    // {:0{}} means: pad with '0', and take the width from the next argument
-    return std::format("{}{}.{:0{}}", sign, number.integer, number.fractional, number.n_fractional_digits);
+    std::stringstream ss;
+    ss << sign << number.integer << "." << std::setw(number.n_fractional_digits) << std::setfill('0') << number.fractional;
+    return ss.str();
 }
 
 std::string to_string(const RealNumber* number) {
