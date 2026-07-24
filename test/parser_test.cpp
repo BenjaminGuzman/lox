@@ -431,12 +431,12 @@ greet(greeting: "Hello", name: "User");
 
 TEST(ParserTest, HighOrderFunctionPassing) {
     std::string result = parse_and_serialize(R"(
-fun apply(func, value) {
-  return func(value);
+fun apply(fn, value) {
+  return fn(value);
 }
 apply(printValue, 10);
 )");
-    EXPECT_EQ(result, "(fun apply (group func value) ({ (return (call func value))))(call apply printValue 10.0)");
+    EXPECT_EQ(result, "(fun apply (group fn value) ({ (return (call fn value))))(call apply printValue 10.0)");
 }
 
 TEST(ParserTest, HighOrderFunctionReturning) {
