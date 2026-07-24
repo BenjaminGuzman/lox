@@ -24,6 +24,9 @@ private:
     [[nodiscard]] llvm::Value* compileString(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compilePlus(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileMinus(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileStar(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileSlash(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileGroup(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const;
 
     /**
@@ -34,6 +37,9 @@ private:
         {AST_ROOT,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileASTRoot(astNode);}},
         {PLUS,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePlus(astNode);}},
         {MINUS,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileMinus(astNode);}},
+        {STAR,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileStar(astNode);}},
+        {SLASH,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileSlash(astNode);}},
+        {LEFT_PAREN,[this](const std::unique_ptr<ASTNode>& astNode) {return this->compileGroup(astNode);}},
     };
 
 public:

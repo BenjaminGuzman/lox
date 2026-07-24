@@ -7,28 +7,31 @@ set(CMAKE_CXX_STANDARD 23) # Enable the C++23 standard
 option(TOKEN_PRETTY_PRINT "Enables pretty print of a serialized token" OFF)
 
 # Add LLVM
-# LLVM is likely not installed in codecrafters
-#find_package(LLVM REQUIRED CONFIG)
-#include_directories(${LLVM_INCLUDE_DIRS})
-#link_directories(${LLVM_LIBRARY_DIRS})
-#add_definitions(${LLVM_DEFINITIONS})
-#llvm_map_components_to_libnames(llvm_libs
-#        core
-#        support
-#        native
-#        irreader
-#)
+if (EXISTS "/opt/homebrew/opt/llvm")
+    list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/llvm")
+endif()
+find_package(LLVM REQUIRED CONFIG)
+include_directories(${LLVM_INCLUDE_DIRS})
+link_directories(${LLVM_LIBRARY_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+llvm_map_components_to_libnames(llvm_libs
+        core
+        support
+        native
+        irreader
+)
 
 # build the core lox library (parser, scanner, compiler)
 set(CORE_SOURCES
         src/scanner/real_number.cpp
         src/scanner/scanner.cpp
         src/parser.cpp
-        src/serializer.cpp)
+        src/serializer.cpp
+        src/compiler.cpp)
 
 add_library(lox STATIC ${CORE_SOURCES})
 target_include_directories(lox PRIVATE include/)
-#target_link_libraries(lox ${llvm_libs})
+target_link_libraries(lox ${llvm_libs})
 
 if(TOKEN_PRETTY_PRINT)
     target_compile_definitions(lox PRIVATE TOKEN_PRETTY_PRINT)
@@ -68,7 +71,8 @@ add_executable(tests
         test/scanner_test.cpp
         test/real_number_test.cpp
         test/interpreter_test.cpp
-        test/parser_test.cpp)
+        test/parser_test.cpp
+        test/compiler_test.cpp)
 target_include_directories(tests PRIVATE
         src/
         include/)

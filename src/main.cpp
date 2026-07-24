@@ -9,6 +9,7 @@
 #include "parser.h"
 #include "scanner.h"
 #include "serializer.h"
+#include "compiler.h"
 #include "internal/utils.h"
 
 /**
@@ -176,11 +177,31 @@ std::string validate_args_and_get_file(int argc, const char** argv, const std::s
     return 0;
 }
 
+[[nodiscard]] int compile(int argc, const char** argv) {
+    std::string filepath = validate_args_and_get_file(argc, argv, "compile");
+    if (filepath.empty())
+        return 1;
+
+    auto abs_filepath = std::filesystem::canonical(filepath);
+
+    lox::Scanner scanner(abs_filepath);
+    lox::AST ast(scanner, false);
+    int n_errors_parse = ast.build();
+    if (n_errors_parse >  0)
+        return 65;
+
+    lox::Compiler compiler;
+    std::cout << "Compilation exit: " << compiler.compile(ast.root) << std::endl;
+
+    return 0;
+}
+
 const std::unordered_map<std::string, std::function<int(int, const char**)>> COMMANDS = {
     {"tokenize", tokenize},
     {"parse", parse},
     {"evaluate", evaluate},
-    {"run", run}
+    {"run", run},
+    {"compile", compile}
 };
 
 int main(int argc, const char** argv) {
