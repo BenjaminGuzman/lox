@@ -26,6 +26,12 @@ private:
     [[nodiscard]] llvm::Value* compileMinus(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileStar(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileSlash(const std::unique_ptr<ASTNode>& astNode) const;
+    
+    [[nodiscard]] llvm::Value* compileTrue(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileFalse(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileNot(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileComparison(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileEquality(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileGroup(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const;
 
@@ -40,6 +46,18 @@ private:
         {STAR,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileStar(astNode);}},
         {SLASH,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileSlash(astNode);}},
         {LEFT_PAREN,[this](const std::unique_ptr<ASTNode>& astNode) {return this->compileGroup(astNode);}},
+        
+        {TRUE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileTrue(astNode);}},
+        {FALSE,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFalse(astNode);}},
+        {NOT,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNot(astNode);}},
+        
+        {LT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
+        {LTE,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
+        {GT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
+        {GTE,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
+        
+        {EQEQ,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEquality(astNode);}},
+        {NEQ,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEquality(astNode);}},
     };
 
 public:

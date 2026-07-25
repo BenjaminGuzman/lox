@@ -26,8 +26,7 @@ set(CORE_SOURCES
         src/scanner/real_number.cpp
         src/scanner/scanner.cpp
         src/parser.cpp
-        src/serializer.cpp
-        src/compiler.cpp)
+        src/serializer.cpp)
 
 add_library(lox STATIC ${CORE_SOURCES})
 target_include_directories(lox PRIVATE include/)
@@ -50,12 +49,21 @@ set(INTERPRETER_SOURCES
 add_library(lox-interpreter STATIC ${INTERPRETER_SOURCES})
 target_include_directories(lox-interpreter PRIVATE include/)
 
+# build a library including only the compiler
+set(COMPILER_SOURCES
+        src/compiler/compiler.cpp
+        src/compiler/arithmetic_operators.cpp
+        src/compiler/logical_operators.cpp
+        src/compiler/comparison_operators.cpp)
+add_library(lox-compiler STATIC ${COMPILER_SOURCES})
+target_include_directories(lox-compiler PRIVATE include/)
+
 # build the interpreter executable
-add_executable(interpreter
+add_executable(lox-exec
         src/main.cpp)
-target_include_directories(interpreter PRIVATE
+target_include_directories(lox-exec PRIVATE
         include/)
-target_link_libraries(interpreter lox lox-interpreter)
+target_link_libraries(lox-exec lox lox-interpreter lox-compiler)
 
 
 # Add tests
@@ -79,6 +87,7 @@ target_include_directories(tests PRIVATE
 target_link_libraries(tests
         lox
         lox-interpreter
+        lox-compiler
         GTest::gtest_main)
 
 include(GoogleTest)
