@@ -1,5 +1,6 @@
 #include "../include/compiler.h"
 #include "scanner/real_number.h"
+#include <llvm-c/ExecutionEngine.h>
 
 namespace lox {
 Compiler::Compiler() {
@@ -14,6 +15,9 @@ Compiler::Compiler() {
     // create initial block from which we'll start executing the code from
     llvm::BasicBlock* entry = llvm::BasicBlock::Create(*globalCtx, "entry", mainFunc);
     builder->SetInsertPoint(entry);
+    
+    // push global scope
+    pushScope();
 }
 
 llvm::Value* Compiler::compile(const std::unique_ptr<ASTNode>& root) const {
@@ -41,10 +45,42 @@ llvm::Value* Compiler::compileASTRoot(const std::unique_ptr<ASTNode> &root) cons
     for (auto&& ast_node : root->children)
         lastValue = this->compile(ast_node);
 
-    if (lastValue) // return something iff the return value is actually something (not nil)
+    if (lastValue) { // return something iff the return value is actually something (not nil)
+        if (lastValue->getType()->isIntegerTy(1)) {
+            lastValue = builder->CreateUIToFP(lastValue, builder->getDoubleTy(), "booltodouble");
+        }
         builder->CreateRet(lastValue);
+    }
 
     globalModule->print(llvm::errs(), nullptr);
     return lastValue;
+}
+
+llvm::GenericValue Compiler::runJIT() {
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+    LLVMLinkInMCJIT();
+
+    std::string errStr;
+    llvm::ExecutionEngine* EE = llvm::EngineBuilder(std::move(globalModule))
+        .setErrorStr(&errStr)
+        .setEngineKind(llvm::EngineKind::JIT)
+        .create();
+
+    if (!EE) {
+        std::cerr << "Failed to construct ExecutionEngine: " << errStr << "\n";
+        return {};
+    }
+
+    EE->finalizeObject();
+    
+    llvm::Function* mainFunc = EE->FindFunctionNamed("main");
+    if (!mainFunc) {
+        std::cerr << "Main function not found.\n";
+        return {};
+    }
+
+    return EE->runFunction(mainFunc, {});
 }
 } // lox

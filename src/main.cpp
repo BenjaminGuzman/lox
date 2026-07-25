@@ -150,27 +150,39 @@ std::string validate_args_and_get_file(int argc, const char** argv, const std::s
         if (line.empty())
             continue; // Continue on empty line
 
+        // keep track of how many statements were already processed
+        // since `ast.root` accumulates everything parsed in this session.
+        size_t prev_size = ast.root->children.size();
         scanner.feed(line + "\n");
-        const auto& stmt = ast.build_next_statement();
-        if (stmt == ast.root)
-            continue; // Parse error or no statements
-        
-        underlying_t val = interpreter.execute(stmt);
-        if (stmt->token.type == PRINT)
-            continue; // avoid printing the return value (nullptr) of print function
+        int errors = ast.build();
+        if (errors > 0)
+            continue; // Parse error
 
-        // print the returned value
-        std::visit([]<typename E>(E&& v) {
-            if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>)
-                return;
+        // process all newly parsed statements from this line.
+        // this is crucial because chained functions (e.g. `makeAdder(10)(4)`) 
+        // are parsed as multiple siblings of AST_ROOT. executing only the last one 
+        // skips the first call, causing '__CHAIN_F__' to remain undeclared.
+        for (size_t i = prev_size; i < ast.root->children.size(); ++i) {
+            const auto& stmt = ast.root->children[i];
+            underlying_t val = interpreter.execute(stmt);
+            if (stmt->token.type == PRINT)
+                continue; // avoid printing the return value (nullptr) of print function
+            if (i != ast.root->children.size() - 1)
+                continue; // avoid printing intermediate values
 
-            std::cout << "\033[2mReturned: \033[0m";
-            if constexpr (std::is_same_v<std::decay_t<E>, std::nullptr_t>)
-                std::cout << "nil";
-            else if constexpr (!std::is_same_v<std::decay_t<E>, std::monostate>)
-                std::cout << v;
-            std::cout << std::endl;
-        }, val);
+            // print the returned value
+            std::visit([]<typename E>(E&& v) {
+                if constexpr (std::is_same_v<std::decay_t<E>, std::monostate>)
+                    return;
+
+                std::cout << "\033[2mReturned: \033[0m";
+                if constexpr (std::is_same_v<std::decay_t<E>, std::nullptr_t>)
+                    std::cout << "nil";
+                else if constexpr (!std::is_same_v<std::decay_t<E>, std::monostate>)
+                    std::cout << v;
+                std::cout << std::endl;
+            }, val);
+        }
     }
 
     std::cout << "Bye! ✌️" << std::endl;

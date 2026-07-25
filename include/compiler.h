@@ -7,6 +7,9 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/Support/TargetSelect.h>
 
 #include "parser.h"
 
@@ -18,6 +21,9 @@ private:
     std::unique_ptr<llvm::LLVMContext> globalCtx;
     std::unique_ptr<llvm::Module> globalModule;
     std::unique_ptr<llvm::IRBuilder<>> builder;
+    
+    // Stack of scopes mapping variable names to their LLVM alloca instructions
+    mutable std::vector<std::unordered_map<std::string, llvm::AllocaInst*>> symbol_table;
 
 
     [[nodiscard]] llvm::Value* compileNumber(const std::unique_ptr<ASTNode>& astNode) const;
@@ -33,7 +39,12 @@ private:
     [[nodiscard]] llvm::Value* compileComparison(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileEquality(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileGroup(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileVar(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileEqual(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileIdentifier(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const;
+    
+    llvm::AllocaInst* getVar(const std::string& name) const;
 
     /**
      * Stores the token types to the function that should be responsible for compiling the token.
@@ -58,12 +69,21 @@ private:
         
         {EQEQ,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEquality(astNode);}},
         {NEQ,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEquality(astNode);}},
+        
+        {VAR,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {EQ,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
+        {IDENTIFIER,[this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIdentifier(astNode);}},
     };
 
 public:
     Compiler();
+    
+    void pushScope();
+    void popScope();
     //llvm::Value* compile(const std::unique_ptr<ASTNode> root);
     [[nodiscard]] llvm::Value* compile(const std::unique_ptr<ASTNode>& root) const;
+    
+    llvm::GenericValue runJIT();
 };
 } // lox
 
