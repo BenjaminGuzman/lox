@@ -58,7 +58,8 @@ set(COMPILER_SOURCES
         src/compiler/arithmetic_operators.cpp
         src/compiler/logical_operators.cpp
         src/compiler/comparison_operators.cpp
-        src/compiler/state_mod_operators.cpp)
+        src/compiler/state_mod_operators.cpp
+        src/compiler/string.cpp)
 add_library(lox-compiler STATIC ${COMPILER_SOURCES})
 target_include_directories(lox-compiler PRIVATE include/)
 

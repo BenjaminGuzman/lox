@@ -88,3 +88,35 @@ TEST(CompilerTest, VariableComplexLogic) {
 TEST(CompilerTest, MultipleAssignments) {
     EXPECT_NEAR(compile_and_get_constant("var a; var b; a = b = 10; a + b;"), 20.0, 1e-9);
 }
+
+TEST(CompilerTest, ConstantFoldingStrings) {
+    EXPECT_EQ(compile_and_get_bool_constant("\"hello\" == \"hello\";").value_or(false), true);
+    EXPECT_EQ(compile_and_get_bool_constant("\"hello\" == \" world\";").value_or(true), false);
+    EXPECT_EQ(compile_and_get_bool_constant("\"hello\" + \" world\" == \"hello world\";").value_or(false), true);
+}
+
+TEST(CompilerTest, VariablesAndStrings) {
+    EXPECT_EQ(compile_and_get_bool_constant("var a = \"foo\"; var b = \"bar\"; a + b == \"foobar\";").value_or(false), true);
+    EXPECT_EQ(compile_and_get_bool_constant("var a = \"foo\"; a = a + \"baz\"; a == \"foobaz\";").value_or(false), true);
+}
+
+extern "C" char* lox_concat_string(const char* a, const char* b);
+extern "C" void lox_free_strings();
+
+TEST(CompilerTest, StringInterningReuseTest) {
+    lox_free_strings();
+    
+    char* ptr1 = lox_concat_string("hello", "world");
+    char* ptr2 = lox_concat_string("hello", "world");
+    char* ptr3 = lox_concat_string("hello", "world");
+    char* ptr4 = lox_concat_string("hello", "world");
+
+    // All pointers should be exactly the same memory address
+    EXPECT_EQ(ptr1, ptr2);
+    EXPECT_EQ(ptr1, ptr3);
+    EXPECT_EQ(ptr1, ptr4);
+    
+    EXPECT_STREQ(ptr1, "helloworld");
+    
+    lox_free_strings();
+}

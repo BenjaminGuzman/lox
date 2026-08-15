@@ -13,6 +13,18 @@ llvm::Value* Compiler::compilePlus(const std::unique_ptr<ASTNode>& astNode) cons
         if (!lhs || !rhs)
             return nullptr;
 
+        // if lhs and rhs are pointers, they are (likely to be) strings
+        if (lhs->getType()->isPointerTy() && rhs->getType()->isPointerTy()) {
+            // function signature is char* lox_concat_string(char*, char*)
+            llvm::FunctionType* concatType = llvm::FunctionType::get(
+                builder->getPtrTy(), // return type of the function
+                {builder->getPtrTy(), builder->getPtrTy()}, // parameter types of the function
+                false // is a vararg function?
+            );
+            llvm::FunctionCallee concatFunc = globalModule->getOrInsertFunction("lox_concat_string", concatType);
+            return builder->CreateCall(concatFunc, {lhs, rhs}, "concattmp");
+        }
+
         return builder->CreateFAdd(lhs, rhs, "addtmp");
     }
 
@@ -27,7 +39,8 @@ llvm::Value* Compiler::compileMinus(const std::unique_ptr<ASTNode>& astNode) con
     if (opType == BINARY) {
         llvm::Value* lhs = this->compile(astNode->children[0]);
         llvm::Value* rhs = this->compile(astNode->children[1]);
-        if (!lhs || !rhs) return nullptr;
+        if (!lhs || !rhs)
+            return nullptr;
         return builder->CreateFSub(lhs, rhs, "subtmp");
     }
 

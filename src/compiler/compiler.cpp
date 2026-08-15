@@ -1,5 +1,6 @@
 #include "../include/compiler.h"
 #include "scanner/real_number.h"
+#include <llvm/Support/DynamicLibrary.h>
 #include <llvm-c/ExecutionEngine.h>
 
 namespace lox {
@@ -56,11 +57,17 @@ llvm::Value* Compiler::compileASTRoot(const std::unique_ptr<ASTNode> &root) cons
     return lastValue;
 }
 
+extern "C" void lox_free_strings();
+
 llvm::GenericValue Compiler::runJIT() {
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
     llvm::InitializeNativeTargetAsmParser();
     LLVMLinkInMCJIT();
+
+    // indicate the OS to search for symbols (e.g., lox_concat_string) not in an external
+    // library (e.g., .so) but within the current executable
+    llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 
     std::string errStr;
     llvm::ExecutionEngine* EE = llvm::EngineBuilder(std::move(globalModule))
@@ -81,6 +88,11 @@ llvm::GenericValue Compiler::runJIT() {
         return {};
     }
 
-    return EE->runFunction(mainFunc, {});
+    llvm::GenericValue result = EE->runFunction(mainFunc, {});
+    
+    // free all dynamically allocated strings during the JIT execution
+    lox_free_strings();
+    
+    return result;
 }
 } // lox

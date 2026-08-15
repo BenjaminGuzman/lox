@@ -43,6 +43,23 @@ llvm::Value* Compiler::compileEquality(const std::unique_ptr<ASTNode>& astNode) 
         // NEQ
         return builder->CreateICmpNE(lhs, rhs, "neqtmp");
     }
+
+    // compare strings
+    if (lhs->getType()->isPointerTy() && rhs->getType()->isPointerTy()) {
+        llvm::FunctionType* funcType = llvm::FunctionType::get(
+            builder->getInt1Ty(),
+            {builder->getPtrTy(), builder->getPtrTy()},
+            false
+        );
+        llvm::FunctionCallee eqFunc = globalModule->getOrInsertFunction("lox_string_eq", funcType);
+        llvm::Value* eqRes = builder->CreateCall(eqFunc, {lhs, rhs}, "streqtmp");
+        
+        if (astNode->token.type == EQEQ)
+            return eqRes;
+            
+        // NEQ
+        return builder->CreateNot(eqRes, "strneqtmp");
+    }
     
     // for mismatching types (e.g., bool == double), lox considers them unequal
     if (astNode->token.type == EQEQ)

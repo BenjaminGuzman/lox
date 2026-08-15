@@ -22,11 +22,12 @@ private:
     std::unique_ptr<llvm::Module> globalModule;
     std::unique_ptr<llvm::IRBuilder<>> builder;
     
-    // Stack of scopes mapping variable names to their LLVM alloca instructions
+    // stack of scopes mapping variable names to their LLVM alloca instructions
     mutable std::vector<std::unordered_map<std::string, llvm::AllocaInst*>> symbol_table;
 
 
     [[nodiscard]] llvm::Value* compileNumber(const std::unique_ptr<ASTNode>& astNode) const;
+
     [[nodiscard]] llvm::Value* compileString(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compilePlus(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileMinus(const std::unique_ptr<ASTNode>& astNode) const;
@@ -51,6 +52,7 @@ private:
      */
     const std::unordered_map<TokenType, std::function<llvm::Value*(const std::unique_ptr<ASTNode>& astNode)>> TOKEN_COMPILERS = {
         {NUMBER,    [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNumber(astNode);}},
+        {STRING,    [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileString(astNode);}},
         {AST_ROOT,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileASTRoot(astNode);}},
         {PLUS,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePlus(astNode);}},
         {MINUS,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileMinus(astNode);}},
