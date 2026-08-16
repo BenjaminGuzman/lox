@@ -1,21 +1,26 @@
-#include "../include/compiler.h"
+#include <ranges>
+
+#include "compiler.h"
 
 namespace lox {
 
-void Compiler::pushScope() {
+void Compiler::pushScope() const {
     symbol_table.emplace_back();
 }
 
-void Compiler::popScope() {
-    if (!symbol_table.empty()) {
-        symbol_table.pop_back();
-    }
+void Compiler::popScope() const {
+    if (symbol_table.empty())
+        return;
+
+    // TODO clear all the strings in the scope to be popped from the interned_strings map
+    //  though, they not necessarily need to be cleaned as they may be reused...
+    symbol_table.pop_back();
 }
 
 llvm::AllocaInst* Compiler::getVar(const std::string& name) const {
-    for (auto it = symbol_table.rbegin(); it != symbol_table.rend(); ++it)
-        if (it->contains(name))
-            return it->at(name);
+    for (auto & it : std::views::reverse(symbol_table))
+        if (it.contains(name))
+            return it.at(name);
     return nullptr;
 }
 
@@ -24,20 +29,12 @@ llvm::Value* Compiler::compileVar(const std::unique_ptr<ASTNode>& astNode) const
         return nullptr;
 
     if (astNode->children[0]->token.type == IDENTIFIER) {
-        // declaration: var a;
-        std::string identifier = astNode->children[0]->token.lexeme;
-        
-        // allocate space for a double by default (nil/uninitialized Lox vars)
-        llvm::AllocaInst* alloca = builder->CreateAlloca(builder->getDoubleTy(), nullptr, identifier);
-        symbol_table.back()[identifier] = alloca;
-        
-        // Initialize to 0.0
-        builder->CreateStore(llvm::ConstantFP::get(*globalCtx, llvm::APFloat(0.0)), alloca);
-        return alloca;
+        std::cerr << "'var' declaration is not valid. Will introduce type-specific declaration later on" << std::endl;
+        return nullptr;
     }
 
     if (astNode->children[0]->token.type == EQ) {
-        // Declaration and Initialization: var a = 10;
+        // declaration and initialization: var a = 10;
         const auto& eqNode = astNode->children[0];
         std::string identifier = eqNode->children[0]->token.lexeme;
         
@@ -57,7 +54,7 @@ llvm::Value* Compiler::compileVar(const std::unique_ptr<ASTNode>& astNode) const
 }
 
 llvm::Value* Compiler::compileEqual(const std::unique_ptr<ASTNode>& astNode) const {
-    // Assignment: a = 10;
+    // assignment: a = 10;
     std::string identifier = astNode->children[0]->token.lexeme;
     
     llvm::AllocaInst* alloca = getVar(identifier);

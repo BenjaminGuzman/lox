@@ -89,7 +89,7 @@ std::vector<underlying_t> UserFunction::execute(Interpreter& interpreter, const 
     }
 
     // pop the function's stackframe, avoid memory leaks!
-cleanup:
+//cleanup:
     interpreter.stack.pop_back();
     interpreter.stack = std::move(originalStack); // restore caller's stack
     interpreter.shouldUnwindStack = false;

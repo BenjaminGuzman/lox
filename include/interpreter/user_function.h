@@ -10,7 +10,7 @@
 
 namespace lox {
 class Interpreter;
-struct Stackframe;
+class Stackframe;
 
 /**
  * Represents a function that can be used in lox

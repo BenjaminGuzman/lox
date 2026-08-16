@@ -1,4 +1,4 @@
-#include "../include/compiler.h"
+#include "compiler.h"
 
 namespace lox {
 

@@ -7,7 +7,7 @@
 #include <cstring>
 
 namespace lox {
-Scanner::Scanner(const std::string& filepath, bool is_filepath): filepath(filepath), stream({}) {
+Scanner::Scanner(const std::string& filepath, bool is_filepath): stream({}), filepath(filepath) {
     if (is_filepath) {
         filestream.open(filepath);
         stream.rdbuf(filestream.rdbuf());
@@ -107,7 +107,7 @@ Token parse_number(std::istream& stream, const size_t line, const size_t col) {
 
     // parse fractional (if any)
     unsigned long long fractional = 0;
-    int fractional_digits = 0;
+    unsigned int fractional_digits = 0;
     if (stream.peek() == '.') {
         stream.get(c);
         buff << c;

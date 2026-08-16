@@ -18,11 +18,11 @@ public:
     /**
      * Max number of iterations to perform when the Newton-Raphson method is used
      */
-    static const int NEWTON_RAPHSON_MAX_ITERATIONS = 10;
+    static constexpr int NEWTON_RAPHSON_MAX_ITERATIONS = 10;
 
     unsigned long long integer{};
     unsigned long long fractional{};
-    int n_fractional_digits{};
+    unsigned int n_fractional_digits{};
     bool is_negative = false;
     [[nodiscard]] double to_double() const;
 

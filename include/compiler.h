@@ -37,12 +37,18 @@ private:
     [[nodiscard]] llvm::Value* compileTrue(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileFalse(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileNot(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileAnd(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileOr(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileIf(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileWhile(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileFor(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileComparison(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileEquality(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileGroup(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileVar(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileEqual(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileIdentifier(const std::unique_ptr<ASTNode>& astNode) const;
+    [[nodiscard]] llvm::Value* compileLeftBrace(const std::unique_ptr<ASTNode>& astNode) const;
     [[nodiscard]] llvm::Value* compileASTRoot(const std::unique_ptr<ASTNode>& astNode) const;
     
     llvm::AllocaInst* getVar(const std::string& name) const;
@@ -63,6 +69,8 @@ private:
         {TRUE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileTrue(astNode);}},
         {FALSE,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFalse(astNode);}},
         {NOT,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNot(astNode);}},
+        {AND,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileAnd(astNode);}},
+        {OR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileOr(astNode);}},
         
         {LT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
         {LTE,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
@@ -75,16 +83,29 @@ private:
         {VAR,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
         {EQ,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
         {IDENTIFIER,[this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIdentifier(astNode);}},
+        {LEFT_BRACE,[this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
+        {IF,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},
+        {WHILE,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileWhile(astNode);}},
+        {FOR,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFor(astNode);}},
     };
 
 public:
     Compiler();
     
-    void pushScope();
-    void popScope();
+    void pushScope() const;
+    void popScope() const;
     //llvm::Value* compile(const std::unique_ptr<ASTNode> root);
     [[nodiscard]] llvm::Value* compile(const std::unique_ptr<ASTNode>& root) const;
-    
+
+    /**
+     * Convert a value (e.g., integer, floating, pointer) to a boolean value
+     *
+     * Conversion criteria is the common criteria: 0, 0.0, nullptr, etc... are false, everything else is true
+     * @param value the value to be converted
+     * @return the boolean value, or nullptr if it couldn't be converted to boolean
+     */
+    [[nodiscard]] llvm::Value* to_bool(llvm::Value* value) const;
+
     llvm::GenericValue runJIT();
 };
 } // lox

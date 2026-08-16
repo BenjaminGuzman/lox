@@ -7,7 +7,7 @@
 std::string parse_and_serialize(const std::string& source) {
     lox::Scanner scanner(source, false);
     lox::AST ast(scanner, false);
-    int n_errors = ast.build();
+    int _ = ast.build();
 
     // Redirect cout to a stringstream to capture output
     std::stringstream buffer;

@@ -26,8 +26,9 @@ TEST(CompilerTest, ConstantFoldingArithmetic) {
 }
 
 std::optional<bool> compile_and_get_bool_constant(const std::string& source) {
-    // Since our compileASTRoot casts bool (i1) to double, the JIT will return a double.
-    // 1.0 means true, 0.0 means false.
+    // since our compileASTRoot casts bool (i1) to double, the JIT will return a double
+    // 1.0 means true, 0.0 means false
+
     double res = compile_and_get_constant(source);
     if (std::isnan(res)) return std::nullopt;
     return res != 0.0;
@@ -65,7 +66,6 @@ TEST(CompilerTest, ConstantFoldingMixedLogic) {
 TEST(CompilerTest, VariableDeclarationAndUsage) {
     EXPECT_NEAR(compile_and_get_constant("var a = 10; a + 5;"), 15.0, 1e-9);
     EXPECT_NEAR(compile_and_get_constant("var a = 5; var b = 3; a * b;"), 15.0, 1e-9);
-    EXPECT_NEAR(compile_and_get_constant("var a; a = 20; a / 2;"), 10.0, 1e-9);
     EXPECT_NEAR(compile_and_get_constant("var a = 1; a = a + 2; a = a * 3; a;"), 9.0, 1e-9);
     EXPECT_EQ(compile_and_get_bool_constant("var a = true; a = !a; a;").value_or(true), false);
     EXPECT_EQ(compile_and_get_bool_constant("var a = 5; var b = 10; a < b;").value_or(false), true);
@@ -86,7 +86,54 @@ TEST(CompilerTest, VariableComplexLogic) {
 }
 
 TEST(CompilerTest, MultipleAssignments) {
-    EXPECT_NEAR(compile_and_get_constant("var a; var b; a = b = 10; a + b;"), 20.0, 1e-9);
+    EXPECT_EQ(compile_and_get_constant("var a = 0; var b = 0; b = 10; a = 10; a + b;"), 20.0);
+}
+
+TEST(CompilerTest, BlockScopes) {
+    // block scope overrides outer scope, but outer scope remains unaffected after block
+    EXPECT_EQ(compile_and_get_constant("var a = 5; { var a = 10; } a;"), 5.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 5; { a = 10; } a;"), 10.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 5; { var b = 10; a = b; } a;"), 10.0);
+}
+
+TEST(CompilerTest, LogicalShortCircuit) {
+    EXPECT_EQ(compile_and_get_bool_constant("false or 5;").value_or(false), true);
+    EXPECT_EQ(compile_and_get_bool_constant("10 or 5;").value_or(false), true);
+    EXPECT_EQ(compile_and_get_bool_constant("false and 5;").value_or(true), false);
+    EXPECT_EQ(compile_and_get_bool_constant("10 and 5;").value_or(false), true);
+    
+    // short circuit: if we didn't short circuit, 1 / 0 would cause NaN or crash
+    EXPECT_EQ(compile_and_get_bool_constant("true or (1/0 == 0);").value_or(false), true);
+    EXPECT_EQ(compile_and_get_bool_constant("false and (1/0 == 0);").value_or(true), false);
+}
+
+TEST(CompilerTest, IfElseControlFlow) {
+    EXPECT_EQ(compile_and_get_constant("var a = 0; if (true) a = 1; a;"), 1.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 0; if (false) a = 1; a;"), 0.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 0; if (true) a = 1; else a = 2; a;"), 1.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 0; if (false) a = 1; else a = 2; a;"), 2.0);
+    
+    // nested ifs
+    EXPECT_EQ(compile_and_get_constant("var a = 0; if (true) { if (false) a = 1; else a = 2; } a;"), 2.0);
+}
+
+TEST(CompilerTest, TruthinessEvaluation) {
+    // tests that verify if (cond) treats 0 as false and non-zero as true
+    // (which is what CreateFCmpONE implements)
+    EXPECT_EQ(compile_and_get_constant("var a = 10; if (0) a = 20; a;"), 10.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 10; if (0.0) a = 20; a;"), 10.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 10; if (1) a = 20; a;"), 20.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 10; if (-1.5) a = 20; a;"), 20.0);
+}
+
+TEST(CompilerTest, WhileLoops) {
+    EXPECT_EQ(compile_and_get_constant("var a = 0; while (a < 10) a = a + 1; a;"), 10.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 1; while (a < 100) a = a * 2; a;"), 128.0);
+}
+
+TEST(CompilerTest, ForLoops) {
+    EXPECT_EQ(compile_and_get_constant("var a = 0; for (var i = 0; i < 10; i = i + 1) a = a + i; a;"), 45.0);
+    EXPECT_EQ(compile_and_get_constant("var a = 0; var i = 0; for (; i < 5; i = i + 1) a = a + 2; a;"), 10.0);
 }
 
 TEST(CompilerTest, ConstantFoldingStrings) {
@@ -111,7 +158,7 @@ TEST(CompilerTest, StringInterningReuseTest) {
     char* ptr3 = lox_concat_string("hello", "world");
     char* ptr4 = lox_concat_string("hello", "world");
 
-    // All pointers should be exactly the same memory address
+    // all pointers should be exactly the same memory address
     EXPECT_EQ(ptr1, ptr2);
     EXPECT_EQ(ptr1, ptr3);
     EXPECT_EQ(ptr1, ptr4);

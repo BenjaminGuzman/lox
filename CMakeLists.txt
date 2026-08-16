@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.13)
 project(codecrafters-interpreter)
 
 set(CMAKE_CXX_STANDARD 23) # Enable the C++23 standard
+add_compile_options(-Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
 option(TOKEN_PRETTY_PRINT "Enables pretty print of a serialized token" OFF)
 
@@ -59,7 +60,8 @@ set(COMPILER_SOURCES
         src/compiler/logical_operators.cpp
         src/compiler/comparison_operators.cpp
         src/compiler/state_mod_operators.cpp
-        src/compiler/string.cpp)
+        src/compiler/string.cpp
+        src/compiler/control_statements.cpp)
 add_library(lox-compiler STATIC ${COMPILER_SOURCES})
 target_include_directories(lox-compiler PRIVATE include/)
 

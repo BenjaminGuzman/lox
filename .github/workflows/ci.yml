@@ -53,13 +53,13 @@ jobs:
       run: ctest --output-on-failure -C Release
 
     - name: Rename executable
-      run: mv build/interpreter interpreter-${{ runner.os }}-x86_64
+      run: mv build/lox-exec lox-${{ runner.os }}-x86_64
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: interpreter-${{ runner.os }}
-        path: interpreter-*
+        name: lox-${{ runner.os }}
+        path: lox-*
 
   release:
     needs: build-and-test
@@ -75,13 +75,13 @@ jobs:
     - name: Prepare binaries for release
       run: |
         find artifacts -type f -exec mv {} . \;
-        chmod +x interpreter-Linux-x86_64
-        chmod +x interpreter-macOS-x86_64
+        chmod +x lox-Linux-x86_64
+        chmod +x lox-macOS-x86_64
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        files: interpreter-*
+        files: lox-*
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

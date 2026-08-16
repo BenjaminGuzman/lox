@@ -4,6 +4,30 @@
 #include <llvm-c/ExecutionEngine.h>
 
 namespace lox {
+llvm::Value* Compiler::to_bool(llvm::Value *value) const {
+    if (!value)
+        return builder->getInt1(false);
+
+    if (value->getType()->isDoubleTy()) {
+        llvm::Value* zero = llvm::ConstantFP::get(value->getType(), llvm::APFloat(0.0));
+        return builder->CreateFCmpONE(value, zero, "truthy");
+    }
+
+    if (value->getType()->isPointerTy())
+        return builder->getInt1(true); // a pointer that's not null is always true
+
+    if (value->getType()->isIntegerTy()) {
+        if (value->getType()->isIntegerTy(1))
+            return value;
+        llvm::Value* zero = llvm::ConstantInt::get(value->getType(), 0);
+        return builder->CreateICmpNE(value, zero, "truthy");
+    }
+
+    // TODO improve error logging
+    std::cerr << "Unsupported type for conversion to boolean" << std::endl;
+    return nullptr;
+}
+
 Compiler::Compiler() {
     globalCtx = std::make_unique<llvm::LLVMContext>();
     globalModule = std::make_unique<llvm::Module>("LoxJIT", *globalCtx);
@@ -39,6 +63,17 @@ llvm::Value* Compiler::compileGroup(const std::unique_ptr<ASTNode>& astNode) con
         return nullptr;
 
     return this->compile(astNode->children[0]);
+}
+
+llvm::Value* Compiler::compileLeftBrace(const std::unique_ptr<ASTNode>& astNode) const {
+    pushScope();
+
+    llvm::Value* lastValue = nullptr;
+    for (auto&& stmt : astNode->children)
+        lastValue = this->compile(stmt);
+
+    popScope();
+    return lastValue;
 }
 
 llvm::Value* Compiler::compileASTRoot(const std::unique_ptr<ASTNode> &root) const {

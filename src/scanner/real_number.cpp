@@ -169,7 +169,7 @@ size_t RealNumber::count_digits(unsigned long long n) {
 }
 
 RealNumber operator+(const RealNumber& lhs, const RealNumber& rhs) {
-    int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
+    unsigned int max_digits = std::max(lhs.n_fractional_digits, rhs.n_fractional_digits);
 
     // e.g. 0.0001 + 0.1 =
     // 1 / 10^4 + 1 / 10^1 = (1 + 1 * 10^(4 - 1)) / 10^4 = (1 + 1 * 10^3) / 10^4

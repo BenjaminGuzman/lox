@@ -19,7 +19,13 @@ TokenOpType ASTNode::op_type() const {
     }
 }
 
-AST::AST(Scanner& scanner, bool autobuild) : scanner(scanner), root(std::make_unique<ASTNode>(ASTNode{AST_ROOT, "", std::monostate{}, 0, 0})) {
+AST::AST(Scanner& scanner, bool autobuild) : scanner(scanner),
+    root(std::make_unique<ASTNode>(ASTNode{
+        .token = {AST_ROOT, "", std::monostate{}, 0, 0},
+        .children = {},
+        .parent = nullptr,
+        .must_be_op_type = std::optional<TokenOpType>()}))
+{
     if (autobuild)
         [[maybe_unused]] auto _ = build();
 }

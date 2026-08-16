@@ -1,4 +1,4 @@
-#include "../include/compiler.h"
+#include "compiler.h"
 #include "scanner/real_number.h"
 
 namespace lox {
