@@ -15,15 +15,23 @@ find_package(LLVM REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
-llvm_map_components_to_libnames(llvm_libs
-        core
-        support
-        native
-        irreader
-        executionengine
-        mcjit
-        interpreter
-)
+
+if(LLVM_LINK_LLVM_DYLIB)
+    # on some distros (e.g., Gentoo), LLVM is bundled in a single shared library
+    # instead of multiple static libs
+    set(llvm_libs LLVM)
+else()
+    # on some other distros (e.g., MacOS), LLVM is bundled in  multiple static libs
+    llvm_map_components_to_libnames(llvm_libs
+            core
+            support
+            native
+            irreader
+            executionengine
+            mcjit
+            interpreter
+    )
+endif()
 
 # build the core lox library (parser, scanner, compiler)
 set(CORE_SOURCES
@@ -71,6 +79,7 @@ add_executable(lox-exec
 target_include_directories(lox-exec PRIVATE
         include/)
 target_link_libraries(lox-exec lox lox-interpreter lox-compiler)
+set_target_properties(lox-exec PROPERTIES ENABLE_EXPORTS TRUE) # binary depends on "external" symbols (e.g., lox_concat_string) that the binary itself should expose
 
 
 # Add tests
@@ -96,6 +105,7 @@ target_link_libraries(tests
         lox-interpreter
         lox-compiler
         GTest::gtest_main)
+set_target_properties(tests PROPERTIES ENABLE_EXPORTS TRUE)
 
 include(GoogleTest)
 gtest_discover_tests(tests)

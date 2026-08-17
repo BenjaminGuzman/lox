@@ -1,6 +1,7 @@
 #include "../include/compiler.h"
 #include "scanner/real_number.h"
 #include <llvm/Support/DynamicLibrary.h>
+#include <llvm/ExecutionEngine/JITEventListener.h>
 #include <llvm-c/ExecutionEngine.h>
 
 namespace lox {
@@ -116,6 +117,12 @@ llvm::GenericValue Compiler::runJIT() {
     }
 
     EE->finalizeObject();
+
+#ifndef NDEBUG
+    // register GDB and LLDB listeners only in debug builds
+    EE->RegisterJITEventListener(llvm::JITEventListener::createGDBRegistrationListener());
+    EE->RegisterJITEventListener(llvm::JITEventListener::createIntelJITEventListener()); // often useful alongside GDB depending on arch
+#endif
     
     llvm::Function* mainFunc = EE->FindFunctionNamed("main");
     if (!mainFunc) {
