@@ -29,12 +29,28 @@ llvm::Value* Compiler::compileVar(const std::unique_ptr<ASTNode>& astNode) const
         return nullptr;
 
     if (astNode->children[0]->token.type == IDENTIFIER) {
-        std::cerr << "'var' declaration is not valid. Will introduce type-specific declaration later on" << std::endl;
-        return nullptr;
+        // declaration without initialization: var a; or i32 a;
+        if (astNode->token.type == VAR) {
+            std::cerr << "'var' declaration without initialization is not valid because its type cannot be inferred." << std::endl;
+            return nullptr;
+        }
+        
+        std::string identifier = astNode->children[0]->token.lexeme;
+        llvm::Type* targetType = get_type_for_token(astNode->token.type);
+        if (!targetType)
+            return nullptr;
+
+        llvm::AllocaInst* alloca = builder->CreateAlloca(targetType, nullptr, identifier);
+        symbol_table.back()[identifier] = alloca;
+
+        // zero-initialize by default
+        llvm::Value* zeroVal = llvm::Constant::getNullValue(targetType);
+        builder->CreateStore(zeroVal, alloca);
+        return zeroVal;
     }
 
     if (astNode->children[0]->token.type == EQ) {
-        // declaration and initialization: var a = 10;
+        // declaration and initialization: var a = 10; or i32 a = 10;
         const auto& eqNode = astNode->children[0];
         std::string identifier = eqNode->children[0]->token.lexeme;
         
@@ -42,11 +58,16 @@ llvm::Value* Compiler::compileVar(const std::unique_ptr<ASTNode>& astNode) const
         if (!initVal)
             return nullptr;
 
-        llvm::AllocaInst* alloca = builder->CreateAlloca(initVal->getType(), nullptr, identifier);
+        llvm::Type* targetType = astNode->token.type == VAR ? initVal->getType() : get_type_for_token(astNode->token.type);
+        if (!targetType)
+            return nullptr;
+
+        llvm::AllocaInst* alloca = builder->CreateAlloca(targetType, nullptr, identifier);
         symbol_table.back()[identifier] = alloca;
         
-        builder->CreateStore(initVal, alloca);
-        return initVal;
+        llvm::Value* castedVal = cast_value(initVal, targetType);
+        builder->CreateStore(castedVal, alloca);
+        return castedVal;
     }
 
     std::cerr << "Invalid var declaration." << std::endl;

@@ -8,6 +8,23 @@ llvm::Value* Compiler::compileComparison(const std::unique_ptr<ASTNode>& astNode
     if (!lhs || !rhs)
         return nullptr;
 
+    coerce_types(lhs, rhs);
+
+    if (lhs->getType()->isIntegerTy()) {
+        switch (astNode->token.type) {
+        case LT:
+            return builder->CreateICmpSLT(lhs, rhs, "lttmp");
+        case LTE:
+            return builder->CreateICmpSLE(lhs, rhs, "letmp");
+        case GT:
+            return builder->CreateICmpSGT(lhs, rhs, "gttmp");
+        case GTE:
+            return builder->CreateICmpSGE(lhs, rhs, "getmp");
+        default:
+            return nullptr;
+        }
+    }
+
     switch (astNode->token.type) {
     case LT:
         return builder->CreateFCmpOLT(lhs, rhs, "lttmp");

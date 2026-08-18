@@ -328,6 +328,9 @@ int AST::build() const {
         case LEFT_BRACE:
         case LEFT_PAREN:
         case VAR:
+        case I8: case I16: case I32: case I64:
+        case F32: case F64:
+        case BOOL_TYPE: case STR_TYPE:
         case PRINT:
         case IF:
         case FOR:

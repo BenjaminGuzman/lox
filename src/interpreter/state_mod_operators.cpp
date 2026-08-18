@@ -29,6 +29,10 @@ underlying_t Interpreter::compileEqual(const std::unique_ptr<ASTNode>& astNode) 
 }
 
 underlying_t Interpreter::compileVar(const std::unique_ptr<ASTNode>& astNode) {
+    if (astNode->token.type != VAR)
+        std::cerr << "Warning: static type declarations like '" << astNode->token.lexeme
+                  << "' are ignored by the interpreter. Falling back to dynamic 'var' behavior." << std::endl;
+
     // declaration, i.e., var a;
     if (astNode->children[0]->token.type == IDENTIFIER) {
         // this->registerError("Apparently in lox is illegal to declare a variable", astNode->token); // FIXME remove me

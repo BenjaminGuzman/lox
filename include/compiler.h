@@ -57,36 +57,44 @@ private:
      * Stores the token types to the function that should be responsible for compiling the token.
      */
     const std::unordered_map<TokenType, std::function<llvm::Value*(const std::unique_ptr<ASTNode>& astNode)>> TOKEN_COMPILERS = {
-        {NUMBER,    [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNumber(astNode);}},
-        {STRING,    [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileString(astNode);}},
-        {AST_ROOT,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileASTRoot(astNode);}},
-        {PLUS,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePlus(astNode);}},
-        {MINUS,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileMinus(astNode);}},
-        {STAR,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileStar(astNode);}},
-        {SLASH,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileSlash(astNode);}},
-        {LEFT_PAREN,[this](const std::unique_ptr<ASTNode>& astNode) {return this->compileGroup(astNode);}},
+        {NUMBER,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNumber(astNode);}},
+        {STRING,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileString(astNode);}},
+        {AST_ROOT,   [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileASTRoot(astNode);}},
+        {PLUS,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compilePlus(astNode);}},
+        {MINUS,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileMinus(astNode);}},
+        {STAR,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileStar(astNode);}},
+        {SLASH,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileSlash(astNode);}},
+        {LEFT_PAREN, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileGroup(astNode);}},
         
-        {TRUE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileTrue(astNode);}},
-        {FALSE,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFalse(astNode);}},
-        {NOT,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNot(astNode);}},
-        {AND,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileAnd(astNode);}},
-        {OR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileOr(astNode);}},
+        {TRUE,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileTrue(astNode);}},
+        {FALSE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFalse(astNode);}},
+        {NOT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileNot(astNode);}},
+        {AND,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileAnd(astNode);}},
+        {OR,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileOr(astNode);}},
         
-        {LT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
-        {LTE,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
-        {GT,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
-        {GTE,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
+        {LT,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
+        {LTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
+        {GT,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
+        {GTE,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileComparison(astNode);}},
         
-        {EQEQ,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEquality(astNode);}},
-        {NEQ,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEquality(astNode);}},
+        {EQEQ,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEquality(astNode);}},
+        {NEQ,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEquality(astNode);}},
         
-        {VAR,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
-        {EQ,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
-        {IDENTIFIER,[this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIdentifier(astNode);}},
-        {LEFT_BRACE,[this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
-        {IF,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},
-        {WHILE,     [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileWhile(astNode);}},
-        {FOR,       [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFor(astNode);}},
+        {VAR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {I8,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {I16,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {I32,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {I64,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {F32,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {F64,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {BOOL_TYPE,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {STR_TYPE,   [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
+        {IDENTIFIER, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIdentifier(astNode);}},
+        {LEFT_BRACE, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
+        {IF,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileIf(astNode);}},
+        {WHILE,      [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileWhile(astNode);}},
+        {FOR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFor(astNode);}},
     };
 
 public:
@@ -105,6 +113,29 @@ public:
      * @return the boolean value, or nullptr if it couldn't be converted to boolean
      */
     [[nodiscard]] llvm::Value* to_bool(llvm::Value* value) const;
+
+    /**
+     * Gets the underlying type (e.g., Int32Ty) for the given token (e.g., I32)
+     * @param type the token type
+     * @return the associated underlying type, or nullptr if the token type doesn't have an underlying type
+     */
+    [[nodiscard]] llvm::Type* get_type_for_token(const TokenType& type) const;
+
+    /**
+     * Cast the given value to the given target type
+     * @param val the value to be cast
+     * @param targetType the target type
+     * @return the value cast to the target type, or the value itself if casting failed
+     */
+    [[nodiscard]] llvm::Value* cast_value(llvm::Value* val, llvm::Type* targetType) const;
+
+    /**
+     * Coerce the type of both args so they are equal, e.g., if rhs is 64-bit int and lhs is 32-bit,
+     * lhs will be cast to 64-bit int
+     * @param lhs lhs
+     * @param rhs rhs
+     */
+    void coerce_types(llvm::Value*& lhs, llvm::Value*& rhs) const;
 
     llvm::GenericValue runJIT();
 };

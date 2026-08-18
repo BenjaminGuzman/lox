@@ -25,6 +25,10 @@ llvm::Value* Compiler::compilePlus(const std::unique_ptr<ASTNode>& astNode) cons
             return builder->CreateCall(concatFunc, {lhs, rhs}, "concattmp");
         }
 
+        coerce_types(lhs, rhs);
+        if (lhs->getType()->isIntegerTy())
+            return builder->CreateAdd(lhs, rhs, "addtmp");
+
         return builder->CreateFAdd(lhs, rhs, "addtmp");
     }
 
@@ -41,6 +45,11 @@ llvm::Value* Compiler::compileMinus(const std::unique_ptr<ASTNode>& astNode) con
         llvm::Value* rhs = this->compile(astNode->children[1]);
         if (!lhs || !rhs)
             return nullptr;
+
+        coerce_types(lhs, rhs);
+        if (lhs->getType()->isIntegerTy())
+            return builder->CreateSub(lhs, rhs, "subtmp");
+
         return builder->CreateFSub(lhs, rhs, "subtmp");
     }
 
@@ -48,6 +57,9 @@ llvm::Value* Compiler::compileMinus(const std::unique_ptr<ASTNode>& astNode) con
     llvm::Value* operand = this->compile(astNode->children[0]);
     if (!operand)
         return nullptr;
+
+    if (operand->getType()->isIntegerTy())
+        return builder->CreateNeg(operand, "negtmp");
 
     return builder->CreateFNeg(operand, "negtmp");
 }
@@ -58,6 +70,10 @@ llvm::Value* Compiler::compileStar(const std::unique_ptr<ASTNode>& astNode) cons
     if (!lhs || !rhs)
         return nullptr;
 
+    coerce_types(lhs, rhs);
+    if (lhs->getType()->isIntegerTy())
+        return builder->CreateMul(lhs, rhs, "multmp");
+
     return builder->CreateFMul(lhs, rhs, "multmp");
 }
 
@@ -66,6 +82,10 @@ llvm::Value* Compiler::compileSlash(const std::unique_ptr<ASTNode>& astNode) con
     llvm::Value* rhs = this->compile(astNode->children[1]);
     if (!lhs || !rhs)
         return nullptr;
+
+    coerce_types(lhs, rhs);
+    if (lhs->getType()->isIntegerTy())
+        return builder->CreateSDiv(lhs, rhs, "divtmp");
 
     return builder->CreateFDiv(lhs, rhs, "divtmp");
 }

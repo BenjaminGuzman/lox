@@ -142,6 +142,14 @@ private:
 
         {EQ,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileEqual(astNode);}},
         {VAR,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {I8,         [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {I16,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {I32,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {I64,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {F32,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {F64,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {BOOL_TYPE,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
+        {STR_TYPE,   [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileVar(astNode);}},
         {LEFT_BRACE, [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileLeftBrace(astNode);}},
         {FUNC_CALL,  [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFuncCall(astNode)[0];}}, // FIXME add support for multi-return
         {FUN,        [this](const std::unique_ptr<ASTNode>& astNode) {return this->compileFunc(astNode);}},

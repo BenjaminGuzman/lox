@@ -29,6 +29,110 @@ llvm::Value* Compiler::to_bool(llvm::Value *value) const {
     return nullptr;
 }
 
+llvm::Type* Compiler::get_type_for_token(const TokenType& type) const {
+    switch (type) {
+    case I8:
+        return builder->getInt8Ty();
+    case I16:
+        return builder->getInt16Ty();
+    case I32:
+        return builder->getInt32Ty();
+    case I64:
+        return builder->getInt64Ty();
+    case F32:
+        return builder->getFloatTy();
+    case F64:
+        return builder->getDoubleTy();
+    case BOOL_TYPE:
+        return builder->getInt1Ty();
+    case STR_TYPE:
+        return builder->getPtrTy();
+    default:
+        return nullptr;
+    }
+}
+
+llvm::Value* Compiler::cast_value(llvm::Value* val, llvm::Type* targetType) const {
+    if (!val || !targetType)
+        return val;
+
+    llvm::Type* srcType = val->getType();
+    if (srcType == targetType)
+        return val;
+
+    // both integers
+    if (srcType->isIntegerTy() && targetType->isIntegerTy()) {
+        unsigned srcBits = srcType->getIntegerBitWidth();
+        unsigned dstBits = targetType->getIntegerBitWidth();
+        if (srcBits > dstBits)
+            return builder->CreateTrunc(val, targetType, "trunc");
+
+        // assume signed extension for now
+        //  sext copies the MSB into the padding bits, this is good for signed ints, but bad for unsigned
+        // FIXME use zext (zero extend) for unsigned
+        return builder->CreateSExt(val, targetType, "sext");
+    }
+
+    // both floats
+    if (srcType->isFloatingPointTy() && targetType->isFloatingPointTy()) {
+        if (srcType->isDoubleTy() && targetType->isFloatTy())
+            return builder->CreateFPTrunc(val, targetType, "fptrunc");
+
+        return builder->CreateFPExt(val, targetType, "fpext");
+    }
+
+    // float to int
+    if (srcType->isFloatingPointTy() && targetType->isIntegerTy())
+        return builder->CreateFPToSI(val, targetType, "fptosi");
+
+    // int to float
+    if (srcType->isIntegerTy() && targetType->isFloatingPointTy())
+        return builder->CreateSIToFP(val, targetType, "sitofp");
+
+    // FIXME improve error logging
+    std::cerr << "Unsupported cast" << std::endl;
+    return val;
+}
+
+void Compiler::coerce_types(llvm::Value*& lhs, llvm::Value*& rhs) const {
+    if (!lhs || !rhs)
+        return;
+    llvm::Type* lhsType = lhs->getType();
+    llvm::Type* rhsType = rhs->getType();
+    if (lhsType == rhsType)
+        return;
+
+    // both integers
+    if (lhsType->isIntegerTy() && rhsType->isIntegerTy()) {
+        unsigned lhsBits = lhsType->getIntegerBitWidth();
+        unsigned rhsBits = rhsType->getIntegerBitWidth();
+        if (lhsBits < rhsBits)
+            lhs = builder->CreateSExt(lhs, rhsType, "sext");
+        else
+            rhs = builder->CreateSExt(rhs, lhsType, "sext");
+        return;
+    }
+
+    // both floats
+    if (lhsType->isFloatingPointTy() && rhsType->isFloatingPointTy()) {
+        if (lhsType->isFloatTy() && rhsType->isDoubleTy())
+            lhs = builder->CreateFPExt(lhs, rhsType, "fpext");
+        else if (lhsType->isDoubleTy() && rhsType->isFloatTy())
+            rhs = builder->CreateFPExt(rhs, lhsType, "fpext");
+        return;
+    }
+
+    // int and float
+    if (lhsType->isIntegerTy() && rhsType->isFloatingPointTy()) {
+        lhs = builder->CreateSIToFP(lhs, rhsType, "sitofp");
+        return;
+    }
+    if (lhsType->isFloatingPointTy() && rhsType->isIntegerTy()) {
+        rhs = builder->CreateSIToFP(rhs, lhsType, "sitofp");
+        return;
+    }
+}
+
 Compiler::Compiler() {
     globalCtx = std::make_unique<llvm::LLVMContext>();
     globalModule = std::make_unique<llvm::Module>("LoxJIT", *globalCtx);
@@ -55,8 +159,19 @@ llvm::Value* Compiler::compile(const std::unique_ptr<ASTNode>& root) const {
 }
 
 llvm::Value* Compiler::compileNumber(const std::unique_ptr<ASTNode>& astNode) const {
-    double value = std::get<RealNumber>(astNode->token.literal).to_double();
-    return llvm::ConstantFP::get(*globalCtx, llvm::APFloat(value));
+    return std::visit([this]<typename E>(E&& value) -> llvm::Value* {
+        if constexpr (std::is_same_v<std::decay_t<E>, RealNumber>) {
+            if (value.n_fractional_digits == 0) // if int
+                // TODO implement returning a 32 bit int
+                return llvm::ConstantInt::get(this->builder->getInt64Ty(), value.integer, value.is_negative);
+
+            // if float
+            return llvm::ConstantFP::get(this->builder->getDoubleTy(), llvm::APFloat(value.to_double()));
+        }
+
+        std::cout << "Could not convert to number" << std::endl; // TODO improve error logging
+        return nullptr;
+    }, astNode->token.get_literal());
 }
 
 llvm::Value* Compiler::compileGroup(const std::unique_ptr<ASTNode>& astNode) const {
@@ -83,12 +198,10 @@ llvm::Value* Compiler::compileASTRoot(const std::unique_ptr<ASTNode> &root) cons
         lastValue = this->compile(ast_node);
 
     if (lastValue) { // return something iff the return value is actually something (not nil)
-        if (lastValue->getType()->isIntegerTy(1)) {
-            lastValue = builder->CreateUIToFP(lastValue, builder->getDoubleTy(), "booltodouble");
-        }
+        lastValue = cast_value(lastValue, builder->getDoubleTy());
         builder->CreateRet(lastValue);
-    }
-
+    } else
+        builder->CreateRet(llvm::ConstantFP::get(*globalCtx, llvm::APFloat(0.0)));
     globalModule->print(llvm::errs(), nullptr);
     return lastValue;
 }

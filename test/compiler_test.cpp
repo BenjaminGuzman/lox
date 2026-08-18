@@ -107,6 +107,36 @@ TEST(CompilerTest, LogicalShortCircuit) {
     EXPECT_EQ(compile_and_get_bool_constant("false and (1/0 == 0);").value_or(true), false);
 }
 
+TEST(CompilerTest, StaticTypes) {
+    EXPECT_EQ(compile_and_get_constant("i32 a = 10; a;"), 10.0);
+    EXPECT_NEAR(compile_and_get_constant("f32 b = 3.14; b;"), 3.14, 1e-5);
+    EXPECT_EQ(compile_and_get_constant("i32 a; a;"), 0.0);
+    EXPECT_EQ(compile_and_get_constant("i64 a = 100; a;"), 100.0);
+    EXPECT_EQ(compile_and_get_constant("f64 a = 2.5; a;"), 2.5);
+    EXPECT_EQ(compile_and_get_constant("f64 a; a;"), 0.0);
+}
+
+TEST(CompilerTest, StaticTypesArithmetic) {
+    // integer arithmetic
+    EXPECT_EQ(compile_and_get_constant("i32 a = 10; i32 b = 3; a + b;"), 13.0);
+    EXPECT_EQ(compile_and_get_constant("i32 a = 10; i32 b = 3; a - b;"), 7.0);
+    EXPECT_EQ(compile_and_get_constant("i32 a = 10; i32 b = 3; a * b;"), 30.0);
+    EXPECT_EQ(compile_and_get_constant("i32 a = 10; i32 b = 3; a / b;"), 3.0); // integer division truncates to 3
+    
+    // unary minus
+    EXPECT_EQ(compile_and_get_constant("i32 a = 10; -a;"), -10.0);
+    
+    // type coercion (mixed types)
+    EXPECT_NEAR(compile_and_get_constant("i32 a = 10; f64 b = 2.5; a + b;"), 12.5, 1e-5);
+    EXPECT_NEAR(compile_and_get_constant("f64 a = 2.5; i32 b = 10; a - b;"), -7.5, 1e-5);
+    
+    // comparisons
+    EXPECT_EQ(compile_and_get_bool_constant("i32 a = 10; i32 b = 15; a < b;").value_or(false), true);
+    EXPECT_EQ(compile_and_get_bool_constant("i32 a = 10; i32 b = 15; a > b;").value_or(true), false);
+    EXPECT_EQ(compile_and_get_bool_constant("i32 a = 10; i32 b = 10; a <= b;").value_or(false), true);
+    EXPECT_EQ(compile_and_get_bool_constant("i32 a = -10; i32 b = 5; a < b;").value_or(false), true); // signed comparison
+}
+
 TEST(CompilerTest, IfElseControlFlow) {
     EXPECT_EQ(compile_and_get_constant("var a = 0; if (true) a = 1; a;"), 1.0);
     EXPECT_EQ(compile_and_get_constant("var a = 0; if (false) a = 1; a;"), 0.0);
